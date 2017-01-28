@@ -324,6 +324,7 @@ class MinervaTemplate extends BaseTemplate {
 			'mainmenuhtml' => $this->getMainMenuHtml( $data ),
 			'contenthtml' => $this->getContentWrapperHtml( $data ),
 			'footer' => $this->getFooterTemplateData( $data ),
+			'catlinks' => $data['catlinks'],
 		];
 		// begin rendering
 		echo $templateParser->processTemplate( 'minerva', $templateData );
