@@ -1317,4 +1317,34 @@ class SkinMinerva extends SkinTemplate {
 		// Add Minerva-specific ResourceLoader modules to the page output
 		$out->addModuleStyles( $this->getSkinStyles() );
 	}
+
+  /**
+	 * Add or replace a head item to the output
+	 *
+	 * @param string $name Item name
+	 * @param string $value Raw HTML
+	 */
+	public function addHeadItem( $name, $value ) {
+		$this->getOutput()->addHeadItem($name, $value);
+	}
+
+	/**
+	 * Add one or more modules recognized by ResourceLoader. Modules added
+	 * through this function will be loaded by ResourceLoader when the
+	 * page loads.
+	 *
+	 * @param string|array $modules Module name (string) or array of module names
+	 */
+	public function addModules( $modules ) {
+    return $this->getOutput()->addModules($modules);
+	}
+
+	public function addModuleScripts( $modules ) {
+    return $this->getOutput()->addModuleScripts($modules);
+	}
+
+	public function addModuleStyles( $modules ) {
+    return $this->getOutput()->addModuleStyles($modules);
+	}
+
 }
