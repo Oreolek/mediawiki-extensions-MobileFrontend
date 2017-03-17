@@ -17,34 +17,6 @@ class MinervaTemplate extends BaseTemplate {
 	protected $isMainPage;
 
 	/**
-	 * Gets the header content for the top chrome.
-	 * @param array $data Data used to build the page
-	 * @return string
-	 */
-	protected function getChromeHeaderContentHtml( $data ) {
-		return $this->getSearchForm( $data );
-	}
-
-	/**
-	 * Generates the HTML required to render the search form.
-	 *
-	 * @param array $data The data used to render the page
-	 * @return string
-	 */
-	protected function getSearchForm( $data ) {
-		$args = [
-			'action' => $data['wgScript'],
-			'searchInput' => $this->makeSearchInput( $data['searchInputAttributes'] ),
-			'searchButton' => $this->makeSearchButton( 'fulltext', [
-				'class' => MobileUI::buttonClass( 'progressive',
-					'fulltext-search' ),
-			] )
-		];
-		$templateParser = new TemplateParser( __DIR__ );
-		return $templateParser->processTemplate( 'search_form', $args );
-	}
-
-	/**
 	 * Start render the page in template
 	 */
 	public function execute() {
@@ -91,21 +63,13 @@ class MinervaTemplate extends BaseTemplate {
 			];
 		}
 
-		if ( $this->getSkin()->isFooterV2() ) {
-			// This turns off the footer id and allows us to distinguish the old footer with the new design
-			return [
-				'lastmodified' => $this->getHistoryLinkHtml( $data ),
-				'headinghtml' => $data['footer-site-heading-html'],
-				'licensehtml' => $data['mobile-license'],
-				'lists' => $groups,
-				'v1' => false,
-			];
-		} else {
-			return [
-				'v1' => true,
-				'lists' => $groups,
-			];
-		}
+		// This turns off the footer id and allows us to distinguish the old footer with the new design
+		return [
+			'lastmodified' => $this->getHistoryLinkHtml( $data ),
+			'headinghtml' => $data['footer-site-heading-html'],
+			'licensehtml' => $data['mobile-license'],
+			'lists' => $groups,
+		];
 	}
 
 	/**
@@ -154,8 +118,7 @@ class MinervaTemplate extends BaseTemplate {
 				'timestamp' => $historyLink['data-timestamp']
 			];
 			$templateParser = new TemplateParser( __DIR__ );
-			$templateName = $this->getSkin()->isFooterV2() ? 'history-beta' : 'history';
-			return $templateParser->processTemplate( $templateName, $args );
+			return $templateParser->processTemplate( 'history', $args );
 		} else {
 			return '';
 		}
@@ -259,8 +222,7 @@ class MinervaTemplate extends BaseTemplate {
 	 * @return string
 	 */
 	protected function getPostContentHtml( $data ) {
-		return $this->getSecondaryActionsHtml() .
-			( $this->getSkin()->isFooterV2() ? '' : $this->getHistoryLinkHtml( $data ) );
+		return $this->getSecondaryActionsHtml();
 	}
 
 	/**
@@ -292,23 +254,6 @@ class MinervaTemplate extends BaseTemplate {
 	}
 
 	/**
-	 * Get HTML for header elements
-	 * @param array $data Data used to build the header
-	 * @return string
-	 */
-	protected function getHeaderHtml( $data ) {
-		// Note these should be wrapped in divs
-		// see https://phabricator.wikimedia.org/T98498 for details
-		$html = '<div>' . $data['menuButton'] . '</div>'
-			. $this->getChromeHeaderContentHtml( $data );
-		// Do not show the secondary button container if no secondary button is available
-		if ( $data['secondaryButton'] ) {
-			$html .= '<div>' . $data['secondaryButton'] . '</div>';
-		}
-		return $html;
-	}
-
-	/**
 	 * Render the entire page
 	 * @param array $data Data used to build the page
 	 * @todo replace with template engines
@@ -317,13 +262,28 @@ class MinervaTemplate extends BaseTemplate {
 		$templateParser = new TemplateParser( __DIR__ );
 
 		// prepare template data
+		$input = Html::element( 'input',
+			[ 'type' => 'submit', 'value' => wfMessage( 'searchbutton' ) ]
+		);
 		$templateData = [
 			'banners' => $data['banners'],
+			'wgScript' => $data['wgScript'],
+			'isAnon' => $data['username'] === null,
+			'search' => $data['search'],
+			'placeholder' => wfMessage( 'mobile-frontend-placeholder' ),
 			'headelement' => $data[ 'headelement' ],
-			'headerhtml' => $this->getHeaderHtml( $data ),
+			'menuButton' => $data['menuButton'],
+			'headinghtml' => $data['footer-site-heading-html'],
+			'searchButton' => Html::rawElement( 'a', [
+				'href' => SpecialPage::getTitleFor( 'Search' )->getLocalURL(),
+				'id' => 'searchIcon',
+				'class' => MobileUI::iconClass( 'magnifying-glass', 'element' ),
+			], $input ),
+			'secondaryButtonData' => $data['secondaryButtonData'],
 			'mainmenuhtml' => $this->getMainMenuHtml( $data ),
 			'contenthtml' => $this->getContentWrapperHtml( $data ),
 			'footer' => $this->getFooterTemplateData( $data ),
+			'isHeaderV2' => $data['headerV2'],
 			'catlinks' => $data['catlinks'],
 		];
 		// begin rendering

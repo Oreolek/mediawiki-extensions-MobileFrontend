@@ -9,30 +9,40 @@ body {
 	height: 100%;
 }
 
+body {
+	background-color: @chromeColor;
+}
+
+// FIXME: should we use .mw-body here instead?
 #content {
 	// avoid margin collapsing (see T147956)
 	border-top: solid 1px transparent;
+	background-color: @skinContentBgColor;
+	padding-bottom: 32px;
 }
 
 .header-container {
-	background-color: @chromeColor;
-	border-bottom: 1px solid transparent;
+	border-bottom: solid 1px @chromeContentSeparator;
+
+	&.header-chrome {
+		background-color: @chromeColor;
+		border: 0;
+		box-shadow: inset 0 -1px 3px rgba( 0, 0, 0, 0.08 );
+	}
 }
 
-.search-box {
-	// FIXME: remove when micro.tap in stable and rule from common-js.less too
-	-webkit-tap-highlight-color: rgba( 255, 255, 255, 0 );
+#searchIcon {
+	input {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		color: transparent;
 
-	.search {
-		@searchIconSize: 20px;
-		@searchIconGutter: 6px;
-
-		padding: 0.5em 0 0.5em @searchIconSize + (2 * @searchIconGutter);
-		background-position: left @searchIconGutter center;
-		background-repeat: no-repeat;
-		background-size: @searchIconSize @searchIconSize;
-		border-radius: @borderRadius;
-		box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.05 );
+		&:focus {
+			outline: none;
+		}
 	}
 }
 
@@ -80,16 +90,12 @@ body {
 	border-top: 1px solid @colorGray12;
 	margin-top: @headerMarginTop;
 
-	// button
+	.search-box {
+		width: 100%;
+	}
 	> div {
 		width: @headerHeight;
 		position: relative;
-	}
-
-	// Search field
-	> form,
-	// Spinner
-	> div {
 		vertical-align: middle;
 		display: table-cell;
 	}
@@ -99,10 +105,35 @@ body {
 		display: block;
 	}
 
-	// Search
-	> form {
+	.branding-box {
 		width: auto;
-		vertical-align: middle;
+
+		h1 {
+			margin-left: 5px;
+			font-size: 1em;
+
+			span {
+				line-height: 1;
+				font-size: inherit;
+			}
+
+			img {
+				vertical-align: middle;
+			}
+
+			> * {
+				float: left;
+			}
+
+			sup {
+				color: @colorGray5;
+				display: none;
+
+				.beta & {
+					display: initial;
+				}
+			}
+		}
 	}
 
 	> .header-title {
@@ -113,6 +144,29 @@ body {
 		min-height: @headerHeight;
 	}
 }
+
+// FIXME: Fold into .header css rules when cache has cleared
+.feature-header-v2 {
+	.search-box {
+		display: none;
+		width: auto;
+	}
+}
+
+// FIXME: Fold into .header css rules when cache has cleared
+.feature-header-v2,
+.feature-header-v1 {
+	.header .search-box .search {
+		margin-top: 0;
+	}
+}
+
+// Always show the language search input
+// FIXME: Clean up header v2 .search-box styles
+.feature-header-v2 .language-overlay .search-box {
+	display: block;
+}
+
 .header > form,
 .overlay-header .overlay-title {
 	padding: 0.15em 0;
@@ -128,6 +182,8 @@ body {
 
 // Make search input more visible for users on small screens.
 // Opera Mini doesn't support placeholders.
+// FIXME: As soon as HeaderV2 feature flag is removed this entire block can disappear as a search icon
+// will now be shown on Opera Mini instead.
 @media all and ( max-width: @wgMFDeviceWidthMobileSmall ) {
 	.header {
 		.search {
@@ -139,62 +195,37 @@ body {
 	}
 }
 
-/* Search */
+.search-box {
+	// FIXME: remove when micro.tap in stable and rule from common-js.less too
+	-webkit-tap-highlight-color: rgba( 255, 255, 255, 0 );
 
-.client-use-basic-search,
-.client-nojs {
-	.search-box {
-		.fulltext-search,  // FIXME: remove `.fulltext-search` selector when cache clears
-		.button-wrapper {
-			background-color: @colorProgressive;
-			border-radius: @borderRadius;
-			cursor: pointer;
-			float: right;
-			margin-left: 0.5em;
-			padding: 0.375em 0;
+	.search {
+		@searchIconSize: 20px;
+		@searchIconGutter: 6px;
+		// FIXME: input's cannot have child elements so not possible to use mw-ui-icon-before here
+		// How can we avoid multiple use of magnifying glass icon?
+		.background-image-svg( 'magnifying-glass.svg', 'magnifying-glass.png' );
+		outline: 0;
+		width: 100%;
+		// FIXME: unable to check but the important may not be needed for Nokia S60;
+		background-color: #fff !important; /* remove fennec default background also see bug 36490 */
+		// get rid of rounded corners in Safari
+		-webkit-appearance: none;
 
-			.fulltext-search {
-				opacity: 0;  // the enclosing div is an icon, no need to show the text
-				padding: 0;
-			}
-		}
-		.input-wrapper {
-			overflow: hidden;
-
-			.search {
-				margin-right: 0;
-				// Given no clear icon is needed in basic search mode, maximise space for placeholder text
-				padding-right: 0.1em;
-				width: 100%;
-			}
-		}
-		// FIXME: remove when cache clears
-		> .search,
-		> .fulltext-search {
-			display: inline-block;
-			float: none;
-		}
-		// FIXME: remove when cache clears
-		> .search {
-			max-width: 180px;
-		}
+		padding: 0.5em 0 0.5em @searchIconSize + (2 * @searchIconGutter);
+		background-position: left @searchIconGutter center;
+		background-repeat: no-repeat;
+		background-size: @searchIconSize @searchIconSize;
+		border-radius: @borderRadius;
+		box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.05 );
+		// FIXME: Necessary to support rendering of cached HTML. Move when new header in production
+		// and cache has cleared.
+		margin-top: 0.4em;
 	}
-
-	.content h2 {
-		border-bottom: solid 1px @colorGray14;
-	}
-
 }
 
+/* Search */
 input.search {
-	.background-image-svg( 'magnifying-glass.svg', 'magnifying-glass.png' );
-	outline: 0;
-	width: 100%;
-	// FIXME: unable to check but the important may not be needed for Nokia S60;
-	background-color: #fff !important; /* remove fennec default background also see bug 36490 */
-	// get rid of rounded corners in Safari
-	-webkit-appearance: none;
-
 	// [T139928] Hide all pseudo-elements added to search inputs in WebKit.
 	&::-webkit-search-decoration,
 	&::-webkit-search-cancel-button,
@@ -263,18 +294,35 @@ input.search {
 	}
 }
 
+// FIXME: Remove block when feature-header-v1 no longer supported
+.client-js {
+	.feature-header-v1 .search-box {
+		padding-right: 1em;
+	}
+	.is-authenticated {
+		.feature-header-v1 .search-box {
+			padding-right: 0;
+		}
+	}
+}
+
+// FIXME: Remove block when feature-header-v1 no longer supported
+.feature-header-v1 {
+	#searchIcon {
+		// This is overriden for non-JS clients (see fixme block below)
+		display: none;
+	}
+}
+
 // Toggling indicators are unusable without JavaScript
 .client-nojs {
 	.section-heading .indicator {
 		display: none;
 	}
-}
 
-.stable {
-	// FIXME: Exists only for caching reasons (T139794)
-	#page-secondary-actions #language-switcher,
-	#page-secondary-actions .language-selector {
-		margin-top: 1em;
+	// FIXME: Remove when feature-header-v1 no longer supported
+	.feature-header-v1 #searchIcon {
+		display: block;
 	}
 }
 
@@ -285,7 +333,11 @@ input.search {
 	a {
 		margin: 10px 2px 2px 0;
 	}
+	.language-selector {
+		margin-top: 1em;
+	}
 }
+
 .truncated-text {
 	white-space: nowrap;
 	overflow: hidden;
@@ -329,25 +381,52 @@ input.search {
 }
 
 .notification-count {
-	text-indent: 0;
-	display: inline-block;
-	font-weight: bold;
-	border-radius: @borderRadius;
-	height: 1.2em;
-	line-height: 1.2em;
-	min-width: 1em;
-	margin: 0.6em 0.6em 0 0;
-	padding: 0 0.1em;
-	text-align: center;
+	@circleSize: 24px;
+	@borderSize: 2px;
 	position: absolute;
+	top: 0;
 	right: 0;
-	top: -0.1em;
-	color: @colorGray7;
-	background: #d2d2d2;
+	bottom: 0;
+	left: 0;
+	margin: auto;
+	height: @circleSize;
+	background: @notificationBackgroundRead;
+	color: @notificationColorRead;
+	cursor: pointer;
+
+	.circle {
+		border-radius: 50%;
+		border: @borderSize solid @notificationColorRead;
+		margin: auto;
+		height: @circleSize - @borderSize;
+		width: @circleSize - @borderSize;
+
+		/* stylelint-disable declaration-block-no-duplicate-properties */
+		// Center the text number inside the circle
+		display: block; // Fallback for old iOS
+		text-align: center; // Fallback for old iOS
+		display: -webkit-box;
+		display: flex;
+		-webkit-box-align: center;
+		align-items: center;
+		-webkit-box-pack: center;
+		justify-content: center;
+
+		span {
+			font-weight: bold;
+			font-size: 13px;
+			line-height: 1;
+			letter-spacing: -0.5px;
+		}
+	}
 
 	&.notification-unseen {
-		color: #fff;
-		background: #c91f2c;
+		color: @notificationColorUnread;
+
+		.circle {
+			background: @notificationBackgroundUnread;
+			border-color: @notificationBackgroundUnread;
+		}
 	}
 
 	&.zero {

@@ -19,7 +19,6 @@ class SpecialMobilePreferences extends SpecialPreferences {
 	 * @return PreferencesForm
 	 */
 	public function getPreferencesForm( $key ) {
-		$prefs = [];
 		$user = $this->getUser();
 		$ctx = $this->getContext();
 
@@ -58,7 +57,7 @@ class SpecialMobilePreferences extends SpecialPreferences {
 		$this->setHeaders();
 		$this->outputHeader();
 		$out = $this->getOutput();
-		$out->disallowUserJs(); # Prevent hijacked user scripts from sniffing passwords etc.
+		$out->disallowUserJs(); // Prevent hijacked user scripts from sniffing passwords etc.
 		$this->requireLogin( 'prefsnologintext2' );
 		$this->checkReadOnly();
 

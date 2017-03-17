@@ -207,6 +207,10 @@
 			} );
 
 			window.location = mw.util.getUrl( title );
+			if ( self.sectionLine ) {
+				// since the path and only the hash has changed it has not triggered a refresh so forcefully refresh
+				window.location.reload();
+			}
 		},
 		/**
 		 * Report load errors back to the user. Silently record the error using EventLogging.
@@ -301,42 +305,21 @@
 			this[this.nextStep]();
 		},
 		/**
-		 * Set up the editor switching interface
-		 * The actual behavior of the editor buttons is initialized in postRender()
-		 * @method
-		 */
-		initializeSwitcher: function () {
-			var toolFactory = new OO.ui.ToolFactory(),
-				toolGroupFactory = new OO.ui.ToolGroupFactory(),
-				toolbar;
-
-			toolbar = new OO.ui.Toolbar( toolFactory, toolGroupFactory, {
-				classes: [ 'editor-switcher' ]
-			} );
-			toolFactory.register( EditVeTool );
-
-			toolbar.setup( [
-				{
-					icon: 'advanced',
-					indicator: 'down',
-					type: 'list',
-					include: [ { group: 'editorSwitcher' } ]
-				}
-			] );
-
-			this.$el.find( '.switcher-container' ).html( toolbar.$element );
-			this.switcherToolbar = toolbar;
-		},
-		/**
 		 * @inheritdoc
 		 */
 		hide: function () {
-			// trigger the customEvent for mw.confirmCloseWindow
-			if ( !this.allowCloseWindow.trigger() ) {
-				return;
+			var self = this;
+			if ( this.hasChanged() ) {
+				OO.ui.confirm( mw.msg( 'mobile-frontend-editor-cancel-confirm' ) ).done( function ( confirmed ) {
+					if ( confirmed ) {
+						self.allowCloseWindow.release();
+						Overlay.prototype.hide.call( self );
+					}
+				} );
+			} else {
+				this.allowCloseWindow.release();
+				Overlay.prototype.hide.call( this );
 			}
-			this.allowCloseWindow.release();
-			return Overlay.prototype.hide.apply( this, arguments );
 		},
 		/**
 		 * Check, if the user should be asked if they really want to leave the page.

@@ -151,7 +151,7 @@ class ApiMobileView extends ApiBase {
 		if ( $this->mainPage ) {
 			if ( $onlyRequestedSections ) {
 				$requestedSections =
-					self::parseSections( $params['sections'], $data, $missingSections );
+					self::getRequestedSectionIds( $params['sections'], $data, $missingSections );
 			} else {
 				$requestedSections = [ 0 ];
 			}
@@ -159,10 +159,12 @@ class ApiMobileView extends ApiBase {
 				[ 'mainpage' => true ]
 			);
 		} elseif ( isset( $params['sections'] ) ) {
-			$requestedSections = self::parseSections( $params['sections'], $data, $missingSections );
+			$requestedSections = self::getRequestedSectionIds( $params['sections'],
+				$data, $missingSections );
 		} else {
 			$requestedSections = [];
 		}
+
 		if ( isset( $data['sections'] ) ) {
 			if ( isset( $prop['sections'] ) ) {
 				$sectionCount = count( $data['sections'] );
@@ -379,10 +381,10 @@ class ApiMobileView extends ApiBase {
 	 * @param string $str String to parse
 	 * @param array $data Processed parser output
 	 * @param array $missingSections Upon return, contains the list of sections that were
-	 * requested but are not present in parser output
+	 * requested but are not present in parser output (passed by reference)
 	 * @return array
 	 */
-	public static function parseSections( $str, $data, &$missingSections ) {
+	public static function getRequestedSectionIds( $str, $data, &$missingSections ) {
 		$str = trim( $str );
 		if ( !isset( $data['sections'] ) ) {
 			return [];
@@ -440,9 +442,7 @@ class ApiMobileView extends ApiBase {
 	 * @return ParserOutput|null
 	 */
 	protected function getParserOutput( WikiPage $wp, ParserOptions $parserOptions, $oldid = null ) {
-		$time = microtime( true );
 		$parserOutput = $wp->getParserOutput( $parserOptions, $oldid );
-		$time = microtime( true ) - $time;
 		if ( $parserOutput ) {
 			$parserOutput->setTOCEnabled( false );
 		}
@@ -469,6 +469,56 @@ class ApiMobileView extends ApiBase {
 	}
 
 	/**
+	 * Parses section data
+	 * @param string $html representing the entire page
+	 * @param Title $title
+	 * @param ParserOutput $parserOutput
+	 * @param boolean $useTidy whether the provided HTML should be tidied (optional)
+	 * @param integer $revId this is a temporary parameter to avoid debug log warnings.
+	 *  Long term the call to wfDebugLog should be moved outside this method (optional)
+	 * @return array structure representing the list of sections and their properties:
+	 *  - refsections: [] where all keys are section ids of sections with refs
+	 *    that contain references
+	 *  - sections: [] a structured array of all the sections inside the page
+	 *  - text: [] of the text of each individual section. length === same as sections
+	 *      or of length 1 when there is a mismatch.
+	 */
+	protected function parseSectionsData( $html, Title $title, ParserOutput $parserOutput,
+		$useTidy = false, $revId = null
+	) {
+		$data = [];
+		$data['sections'] = $parserOutput->getSections();
+		$sectionCount = count( $data['sections'] );
+		for ( $i = 0; $i < $sectionCount; $i++ ) {
+			$data['sections'][$i]['line'] =
+				$title->getPageLanguage()->convert( $data['sections'][$i]['line'] );
+		}
+		$chunks = preg_split( '/<h(?=[1-6]\b)/i', $html );
+		if ( count( $chunks ) != count( $data['sections'] ) + 1 ) {
+			wfDebugLog( 'mobile', __METHOD__ . "(): mismatching number of " .
+				"sections from parser and split on page {$title->getPrefixedText()}, oldid=$revId" );
+			// We can't be sure about anything here, return all page HTML as one big section
+			$chunks = [ $html ];
+			$data['sections'] = [];
+		}
+		$data['text'] = [];
+		$data['refsections'] = [];
+		foreach ( $chunks as $chunk ) {
+			if ( count( $data['text'] ) ) {
+				$chunk = "<h$chunk";
+			}
+			if ( $useTidy && count( $chunks ) > 1 ) {
+				$chunk = MWTidy::tidy( $chunk );
+			}
+			if ( preg_match( '/<ol\b[^>]*?class="references"/', $chunk ) ) {
+				$data['refsections'][count( $data['text'] )] = true;
+			}
+			$data['text'][] = $chunk;
+		}
+		return $data;
+	}
+
+	/**
 	 * Get data of requested article.
 	 * @param Title $title
 	 * @param boolean $noImages
@@ -478,8 +528,6 @@ class ApiMobileView extends ApiBase {
 	 */
 	private function getData( Title $title, $noImages, $oldid = null ) {
 		$mfConfig = MobileContext::singleton()->getMFConfig();
-		$useTidy = $this->getConfig()->get( 'UseTidy' );
-		$mfTidyMobileViewSections = $mfConfig->get( 'MFTidyMobileViewSections' );
 		$mfMinCachedPageSize = $mfConfig->get( 'MFMinCachedPageSize' );
 		$mfSpecialCaseMainPage = $mfConfig->get( 'MFSpecialCaseMainPage' );
 
@@ -575,35 +623,8 @@ class ApiMobileView extends ApiBase {
 				'refsections' => [],
 			];
 		} else {
-			$data = [];
-			$data['sections'] = $parserOutput->getSections();
-			$sectionCount = count( $data['sections'] );
-			for ( $i = 0; $i < $sectionCount; $i++ ) {
-				$data['sections'][$i]['line'] =
-					$title->getPageLanguage()->convert( $data['sections'][$i]['line'] );
-			}
-			$chunks = preg_split( '/<h(?=[1-6]\b)/i', $html );
-			if ( count( $chunks ) != count( $data['sections'] ) + 1 ) {
-				wfDebugLog( 'mobile', __METHOD__ . "(): mismatching number of " .
-					"sections from parser and split on page {$title->getPrefixedText()}, oldid=$latest" );
-				// We can't be sure about anything here, return all page HTML as one big section
-				$chunks = [ $html ];
-				$data['sections'] = [];
-			}
-			$data['text'] = [];
-			$data['refsections'] = [];
-			foreach ( $chunks as $chunk ) {
-				if ( count( $data['text'] ) ) {
-					$chunk = "<h$chunk";
-				}
-				if ( $useTidy && $mfTidyMobileViewSections && count( $chunks ) > 1 ) {
-					$chunk = MWTidy::tidy( $chunk );
-				}
-				if ( preg_match( '/<ol\b[^>]*?class="references"/', $chunk ) ) {
-					$data['refsections'][count( $data['text'] )] = true;
-				}
-				$data['text'][] = $chunk;
-			}
+			$data = $this->parseSectionsData( $html, $title, $parserOutput,
+				$mfConfig->get( 'MFTidyMobileViewSections' ) && $this->getConfig()->get( 'UseTidy' ), $latest );
 			if ( $this->usePageImages ) {
 				$image = $this->getPageImage( $title );
 				if ( $image ) {
@@ -736,10 +757,14 @@ class ApiMobileView extends ApiBase {
 				$resize['height'] = $params['thumbheight'];
 			}
 			if ( isset( $resize['width'] ) && !isset( $resize['height'] ) ) {
-				$resize['height'] = $file->getHeight(); // Limit by width
+				$resize['height'] = $this->isSVG( $file->getMimeType() )
+					? $this->getScaledDimen( $file->getWidth(), $file->getHeight(), $resize['width'] )
+					: $file->getHeight();
 			}
 			if ( !isset( $resize['width'] ) && isset( $resize['height'] ) ) {
-				$resize['width'] = $file->getWidth(); // Limit by width
+				$resize['width'] = $this->isSVG( $file->getMimeType() )
+					? $this->getScaledDimen( $file->getHeight(), $file->getWidth(), $resize['height'] )
+					: $file->getWidth();
 			}
 			if ( !$resize ) {
 				$resize['width'] = $resize['height'] = 50; // Default
@@ -758,6 +783,28 @@ class ApiMobileView extends ApiBase {
 				]
 			);
 		}
+	}
+
+	/**
+	 * When only one dimension is given in a thumbnail request, scale the other proportionally
+	 * with respect to the original file dimensions.
+	 *
+	 * @param int $srcX image width
+	 * @param int $srcY image height
+	 * @param int $dstX target image width
+	 * @return int
+	 */
+	private function getScaledDimen( $srcX, $srcY, $dstX ) {
+		return $srcX === 0 ? 0 : (int) round( $srcY * $dstX / $srcX );
+	}
+
+	/**
+	 * Verify if mime type is SVG
+	 * @param string $typeStr mime type
+	 * @return bool
+	 */
+	private function isSVG( $typeStr ) {
+		return strpos( $typeStr, 'image/svg' ) === 0;
 	}
 
 	/**

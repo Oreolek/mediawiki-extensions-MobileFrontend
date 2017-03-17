@@ -2,18 +2,19 @@
 	"@metadata": {
 		"authors": [
 			"Khalid Mahmood",
-			"Saanvel"
+			"Saanvel",
+			"Abbas dhothar"
 		]
 	},
 	"mobile-frontend-back-to-top-of-section": "اک سیکشن پچھے چلو",
 	"mobile-frontend-changeslist-nocomment": "لکھائی دا خلاصہ کوئی نہیں",
-	"mobile-frontend-copyright": "لکھت $1 لسنس تھلے ہیگی اے۔",
-	"mobile-frontend-desc": "ہلن والا وکھالہ",
+	"mobile-frontend-copyright": "لکھت $1 لسنس تھلے ہیگا اے۔",
+	"mobile-frontend-desc": "موبائل وکھالہ",
 	"mobile-frontend-disable-images": "موبائل آلی ویب سائٹ تے فوٹواں بند کرو",
 	"mobile-frontend-editor-edit": "لکھو",
 	"mobile-frontend-enable-images": "موبائل آلی ویب سائٹ تے فوٹواں آن کرو",
 	"mobile-frontend-featured-article": "اج دی چونویں لکھت",
-	"mobile-frontend-home-button": "کعر",
+	"mobile-frontend-home-button": "گھر",
 	"mobile-frontend-language-article-heading": "ہور بولی وچ پڑھو",
 	"mobile-frontend-last-modified-date": "آخری واری $1 نوں، $2 وجے پلٹیا گیا",
 	"mobile-frontend-main-menu-account-create": "کھاتہ کھولو",
@@ -32,9 +33,8 @@
 	"mobile-frontend-regular-site": "ایس صفے نوں ریگولر {{ساغیٹناں}} تے ویکھو",
 	"mobile-frontend-search-submit": "چلو",
 	"mobile-frontend-terms-text": "ورتن شرطاں",
-	"mobile-frontend-view": "موبائیل ویو",
+	"mobile-frontend-view": "موبائیل سائٹ",
 	"mobile-frontend-view-desktop": "ڈیسک ٹاپ",
-	"mobile-frontend-view-mobile": "موبائیل",
 	"tag-mobile_edit": "موبائیل توں لکھائی",
 	"tag-mobile_web_edit": "موبائیل ویب سائیٹ توں تبدیلی",
 	"mobile-frontend-pageaction-edit-tooltip": "ایس صفے دے موہری حصے تے لکھو"

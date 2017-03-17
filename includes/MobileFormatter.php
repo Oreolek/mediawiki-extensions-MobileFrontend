@@ -187,7 +187,7 @@ class MobileFormatter extends HtmlFormatter {
 		return parent::filterContent();
 	}
 
-	/*
+	/**
 	 * Apply filtering per element (section) in a document.
 	 * @param DOMElement|DOMDocument $el
 	 * @param DOMDocument $doc
@@ -205,7 +205,7 @@ class MobileFormatter extends HtmlFormatter {
 		}
 	}
 
-	/*
+	/**
 	 * Move the first paragraph in the lead section above the infobox
 	 *
 	 * In order for a paragraph to be moved the following conditions must be met:
@@ -276,7 +276,6 @@ class MobileFormatter extends HtmlFormatter {
 	 * @param DOMDocument $doc Document to create elements in
 	 */
 	private function doRewriteReferencesListsForLazyLoading( $el, DOMDocument $doc ) {
-		$prefixedTitle = $this->title->getPrefixedText();
 		$citePath = "$this->revId";
 		$isReferenceSection = false;
 
@@ -686,7 +685,6 @@ class MobileFormatter extends HtmlFormatter {
 	 *  rank headings and the second is all other headings
 	 */
 	private function getHeadings( DOMDocument $doc ) {
-		$result = [];
 		$headings = $subheadings = [];
 
 		foreach ( $this->topHeadingTags as $tagName ) {

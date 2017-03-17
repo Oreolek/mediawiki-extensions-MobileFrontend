@@ -17,7 +17,7 @@
 	"descriptionmsg": "mobile-frontend-desc",
 	"license-name": "GPL-2.0+",
 	"type": "other",
-	"require": {
+	"requires": {
 		"MediaWiki": ">= 1.27.0"
 	},
 	"callback": "MobileFrontendHooks::onRegistration",
@@ -116,10 +116,10 @@
 			"styles": [
 				"resources/skins.minerva.base.styles/ui.less",
 				"resources/skins.minerva.base.styles/pageactions.less",
-				"resources/skins.minerva.base.styles/footer.less",
 				"resources/skins.minerva.base.styles/common.less",
 				"resources/skins.minerva.base.styles/icons.less",
 				"resources/skins.minerva.base.styles/images.less",
+				"resources/skins.minerva.base.styles/footer.less",
 				"resources/skins.minerva.base.styles/print.less"
 			]
 		},
@@ -171,7 +171,7 @@
 				"mainmenu": "resources/skins.minerva.icons.images/hamburger.svg",
 				"edit": "resources/skins.minerva.icons.images/editLocked.svg",
 				"edit-enabled": "resources/skins.minerva.icons.images/edit.svg",
-				"magnifying-glass-white": "resources/skins.minerva.icons.images/magnifying-glass-white.svg",
+				"magnifying-glass": "resources/skins.minerva.icons.images/magnifying-glass.svg",
 				"language-switcher": "resources/skins.minerva.icons.images/languageSwitcher.svg"
 			}
 		},
@@ -245,16 +245,6 @@
 				"user": "resources/skins.minerva.icons.images.scripts/userNormal.svg",
 				"anonymous": "resources/skins.minerva.icons.images.scripts/userAnonymous.svg"
 			}
-		},
-		"skins.minerva.footerV2.styles": {
-			"targets": [
-				"mobile",
-				"desktop"
-			],
-			"position": "top",
-			"styles": [
-				"resources/skins.minerva.footerV2.styles/common.less"
-			]
 		},
 		"skins.minerva.mainPage.styles": {
 			"targets": [
@@ -1374,6 +1364,7 @@
 				"mobile.startup",
 				"mobile.mainMenu",
 				"mobile.issues",
+				"mobile.search.api",
 				"mobile.search",
 				"mobile.references",
 				"mobile.betaoptin"
@@ -1832,10 +1823,6 @@
 		"MFSchemaEditSampleRate": 0.0625,
 		"MFAllowNonJavaScriptEditing": false,
 		"MinervaAlwaysShowLanguageButton": true,
-		"MinervaUseFooterV2": {
-			"beta": true,
-			"base": true
-		},
 		"MinervaShowCategoriesButton": {
 			"base": false,
 			"beta": true
@@ -1847,6 +1834,10 @@
 		"MinervaEnableBackToTop": {
 			"base": false,
 			"beta": true
+		},
+		"MinervaUseHeaderV2": {
+			"beta": true,
+			"base": false
 		},
 		"MFStripResponsiveImages": true,
 		"MFResponsiveImageWhitelist": [

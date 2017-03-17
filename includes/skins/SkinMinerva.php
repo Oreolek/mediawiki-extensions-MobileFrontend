@@ -42,25 +42,12 @@ class SkinMinerva extends SkinTemplate {
 	}
 
 	/**
-	 * Whether the new footer is to be used
-	 * @return boolean
-	 */
-	public function isFooterV2() {
-		return $this->mobileContext->getConfigVariable( 'MinervaUseFooterV2' );
-	}
-
-	/**
 	 * initialize various variables and generate the template
 	 * @return QuickTemplate
 	 */
 	protected function prepareQuickTemplate() {
-		$appleTouchIcon = $this->getConfig()->get( 'AppleTouchIcon' );
-
 		$out = $this->getOutput();
 		// add head items
-		if ( $appleTouchIcon !== false ) {
-			$out->addLink( [ 'rel' => 'apple-touch-icon', 'href' => $appleTouchIcon ] );
-		}
 		$out->addMeta( 'viewport', 'initial-scale=1.0, user-scalable=yes, minimum-scale=0.25, ' .
 				'maximum-scale=5.0, width=device-width'
 		);
@@ -92,8 +79,10 @@ class SkinMinerva extends SkinTemplate {
 		// Set the links for page secondary actions
 		$tpl->set( 'secondary_actions', $this->getSecondaryActions( $tpl ) );
 
+		// FIXME: Remove when header v2 is in stable.
+		$tpl->set( 'headerV2', $this->mobileContext->getConfigVariable( 'MinervaUseHeaderV2' ) );
+
 		// Construct various Minerva-specific interface elements
-		$this->prepareSearchInputAttributes( $tpl );
 		$this->preparePageContent( $tpl );
 		$this->prepareHeaderAndFooter( $tpl );
 		$this->prepareMenuButton( $tpl );
@@ -103,29 +92,6 @@ class SkinMinerva extends SkinTemplate {
 		$this->prepareLanguages( $tpl );
 
 		return $tpl;
-	}
-
-	/**
-	 * Prepare data used to create the search input
-	 *
-	 * @param QuickTemplate $tpl
-	 */
-	protected function prepareSearchInputAttributes( $tpl ) {
-		// Beta mode makes sense in the mobile context only
-		if ( $this->isMobileMode && $this->mobileContext->isBetaGroupMember() ) {
-			$placeholderMessage = 'mobile-frontend-placeholder-beta';
-		} else {
-			$placeholderMessage = 'mobile-frontend-placeholder';
-		}
-
-		$tpl->set( 'searchInputAttributes', [
-			'id' => 'searchInput',
-			'class' => 'search',
-			'autocomplete' => 'off',
-			// The placeholder gets fed to HTML::element later which escapes all
-			// attribute values, so need to escape the string here.
-			'placeholder' => $this->msg( $placeholderMessage )->text(),
-		] );
 	}
 
 	/**
@@ -334,41 +300,12 @@ class SkinMinerva extends SkinTemplate {
 	}
 
 	/**
-	 * Creates element relating to secondary button
-	 * @param string $title Title attribute value of secondary button
-	 * @param string $url of secondary button
-	 * @param string $spanLabel text of span associated with secondary button.
-	 * @param string $spanClass the class of the secondary button
-	 * @return string html relating to button
-	 */
-	protected function createSecondaryButton( $title, $url, $spanLabel, $spanClass ) {
-		return Html::openElement( 'a', [
-				'title' => $title,
-				'href' => $url,
-				'class' => MobileUI::iconClass( 'notifications', 'element',
-					'user-button main-header-button icon-32px' ),
-				'id' => 'secondary-button',
-			] ) .
-			Html::element(
-				'span',
-				[ 'class' => 'label' ],
-				$title
-			) .
-			Html::closeElement( 'a' ) .
-			Html::element(
-				'span',
-				[ 'class' => $spanClass ],
-				$spanLabel
-			);
-	}
-
-	/**
 	 * Prepares the user button.
 	 * @param QuickTemplate $tpl
 	 */
 	protected function prepareUserButton( QuickTemplate $tpl ) {
 		// Set user button to empty string by default
-		$tpl->set( 'secondaryButton', '' );
+		$tpl->set( 'secondaryButtonData', '' );
 		$notificationsTitle = '';
 		$countLabel = '';
 		$isZero = true;
@@ -407,16 +344,17 @@ class SkinMinerva extends SkinTemplate {
 		}
 
 		if ( $notificationsTitle ) {
-			$spanClass = $isZero ? 'zero' : '';
-			$spanClass .= ' notification-count';
-			$spanClass .= $hasUnseen ? ' notification-unseen' : '';
-
 			$url = $notificationsTitle->getLocalURL(
 				[ 'returnto' => $currentTitle->getPrefixedText() ] );
 
-			$tpl->set( 'secondaryButton',
-				$this->createSecondaryButton( $notificationsMsg, $url, $countLabel, $spanClass )
-			);
+			$tpl->set( 'secondaryButtonData', [
+				'class' => MobileUI::iconClass( 'notifications' ),
+				'title' => $notificationsMsg,
+				'url' => $url,
+				'notificationCount' => $countLabel,
+				'isNotificationCountZero' => $isZero,
+				'hasUnseenNotifications' => $hasUnseen
+			] );
 		}
 	}
 
@@ -1075,6 +1013,7 @@ class SkinMinerva extends SkinTemplate {
 	 * add the page to or remove the page from the user's watchlist; or, if the user is logged out,
 	 * will direct the user's UA to Special:Login.
 	 *
+	 * @param array $actions
 	 * @return array A map compatible with BaseTemplate#makeListItem
 	 */
 	protected function createWatchPageAction( $actions ) {
@@ -1139,7 +1078,6 @@ class SkinMinerva extends SkinTemplate {
 	 * @return boolean
 	 */
 	protected function isCurrentPageEditableByUser() {
-		$contentHandler = $this->getContentHandler();
 
 		$title = $this->getTitle();
 		$user = $this->getUser();
@@ -1329,19 +1267,13 @@ class SkinMinerva extends SkinTemplate {
 	 * Modifies the `<body>` element's attributes.
 	 *
 	 * By default, the `class` attribute is set to the output's "bodyClassName"
-	 * property. If `SkinMinerva#isFooterV2` is truthy (i.e.
-	 * `$wgMinervaUseFooterV2` is truthy), then the "feature-footer-v2" CSS
-	 * feature class is added to the `class` attribute.
+	 * property.
 	 *
 	 * @param OutputPage $out
 	 * @param array $bodyAttrs
 	 */
 	public function addToBodyAttributes( $out, &$bodyAttrs ) {
 		$classes = $out->getProperty( 'bodyClassName' );
-
-		if ( $this->isFooterV2() ) {
-			$classes .= ' feature-footer-v2';
-		}
 
 		$bodyAttrs[ 'class' ] .= ' ' . $classes;
 	}
@@ -1372,9 +1304,6 @@ class SkinMinerva extends SkinTemplate {
 		}
 		if ( $this->getOutput()->getRequest()->getText( 'oldid' ) ) {
 			$styles[] = 'mobile.messageBox';
-		}
-		if ( $this->isFooterV2() ) {
-			$styles[] = 'skins.minerva.footerV2.styles';
 		}
 
 		return $styles;

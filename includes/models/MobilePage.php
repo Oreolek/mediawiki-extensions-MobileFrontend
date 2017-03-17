@@ -29,10 +29,6 @@ class MobilePage {
 	 */
 	private $file;
 	/**
-	 * @var string Page content
-	 */
-	private $content;
-	/**
 	 * @var boolean Whether to use page images
 	 */
 	private $usePageImages;
@@ -51,6 +47,9 @@ class MobilePage {
 		}
 	}
 
+	/**
+	 * @return Revision|bool
+	 */
 	private function getRevision() {
 		if ( $this->rev === null ) {
 			$this->rev = Revision::newKnownCurrent(
