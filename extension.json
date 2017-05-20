@@ -51,6 +51,7 @@
 	},
 	"AutoloadClasses": {
 		"ExtMobileFrontend": "includes/MobileFrontend.body.php",
+		"MinervaHooks": "includes/Minerva.hooks.php",
 		"MobileFrontendHooks": "includes/MobileFrontend.hooks.php",
 		"MobileFrontendSkinHooks": "includes/MobileFrontend.skin.hooks.php",
 		"MobileFrontend\\BaseDomainExtractorInterface": "includes/BaseDomainExtractorInterface.php",
@@ -66,8 +67,6 @@
 		"InlineDiffFormatter": "includes/diff/InlineDiffFormatter.php",
 		"InlineDifferenceEngine": "includes/diff/InlineDifferenceEngine.php",
 		"MobileSiteModule": "includes/modules/MobileSiteModule.php",
-		"MobileUserModule": "includes/modules/MobileUserModule.php",
-		"MobileUserStylesModule": "includes/modules/MobileUserStylesModule.php",
 		"SpecialUploads": "includes/specials/SpecialUploads.php",
 		"SpecialMobileHistory": "includes/specials/SpecialMobileHistory.php",
 		"SpecialMobileDiff": "includes/specials/SpecialMobileDiff.php",
@@ -86,7 +85,7 @@
 		"MinervaTemplate": "includes/skins/MinervaTemplate.php",
 		"MFResourceLoaderParsedMessageModule": "includes/modules/MFResourceLoaderParsedMessageModule.php",
 		"SkinMinerva": "includes/skins/SkinMinerva.php",
-		"SkinMinervaBeta": "includes/skins/SkinMinervaBeta.php",
+		"ICustomizableSkin": "includes/skins/ICustomizableSkin.php",
 		"MobileFrontend\\MenuBuilder": "includes/MenuBuilder.php",
 		"MobileFrontend\\MenuEntry": "includes/MenuBuilder.php",
 		"MobileFrontend\\Devices\\DeviceDetector": "includes/devices/DeviceDetector.php",
@@ -94,7 +93,11 @@
 		"MobileFrontend\\Devices\\AMFDeviceDetector": "includes/devices/AMFDeviceDetector.php",
 		"MobileFrontend\\Devices\\CustomHeaderDeviceDetector": "includes/devices/CustomHeaderDeviceDetector.php",
 		"MobileFrontend\\Devices\\UADeviceDetector": "includes/devices/UADeviceDetector.php",
-		"MobileFrontend\\Devices\\DeviceDetectorService": "includes/devices/DeviceDetectorService.php"
+		"MobileFrontend\\Devices\\DeviceDetectorService": "includes/devices/DeviceDetectorService.php",
+		"MobileFrontend\\ContentProviders\\ContentProviderFactory": "includes/content-providers/ContentProviderFactory.php",
+		"MobileFrontend\\ContentProviders\\DefaultContentProvider": "includes/content-providers/DefaultContentProvider.php",
+		"MobileFrontend\\ContentProviders\\IContentProvider": "includes/content-providers/IContentProvider.php",
+		"MobileFrontend\\ContentProviders\\MwApiContentProvider": "includes/content-providers/MwApiContentProvider.php"
 	},
 	"ResourceModules": {
 		"skins.minerva.base.reset": {
@@ -151,6 +154,16 @@
 			"position": "top",
 			"styles": [
 				"resources/mobile.pagesummary.styles/pagesummary.less"
+			]
+		},
+		"skins.minerva.print.styles": {
+			"targets": [
+				"mobile",
+				"desktop"
+			],
+			"position": "top",
+			"styles": [
+				"resources/skins.minerva.print.styles/styles.less"
 			]
 		},
 		"skins.minerva.tablet.styles": {
@@ -239,7 +252,6 @@
 			"selector": ".mw-ui-icon-{name}:before",
 			"position": "bottom",
 			"images": {
-				"talk": "resources/skins.minerva.icons.images.scripts/talk.svg",
 				"watch": "resources/skins.minerva.icons.images.scripts/watch.svg",
 				"watched": "resources/skins.minerva.icons.images.scripts/watched.svg",
 				"user": "resources/skins.minerva.icons.images.scripts/userNormal.svg",
@@ -287,6 +299,15 @@
 				"contributions": "resources/mobile.mainMenu.icons/contributions.svg"
 			}
 		},
+		"mobile.mainMenu.styles": {
+			"targets": [
+				"mobile",
+				"desktop"
+			],
+			"styles": [
+				"resources/mobile.mainMenu.styles/mainmenu.less"
+			]
+		},
 		"mobile.mainMenu": {
 			"targets": [
 				"mobile",
@@ -294,13 +315,11 @@
 			],
 			"dependencies": [
 				"mobile.mainMenu.icons",
+				"mobile.mainMenu.styles",
 				"mobile.startup",
 				"mobile.loggingSchemas.mobileWebMainMenuClickTracking"
 			],
 			"position": "bottom",
-			"styles": [
-				"resources/mobile.mainMenu/mainmenu.less"
-			],
 			"templates": {
 				"menu.hogan": "resources/mobile.mainMenu/menu.mustache",
 				"menuGroup.hogan": "resources/mobile.mainMenu/menuGroup.mustache"
@@ -309,17 +328,24 @@
 				"resources/mobile.mainMenu/MainMenu.js"
 			]
 		},
+		"mobile.messageBox.styles": {
+			"targets": [
+				"mobile",
+				"desktop"
+			],
+			"position": "top",
+			"styles": [
+				"resources/mobile.messageBox.styles/messageBox.less"
+			]
+		},
 		"mobile.messageBox": {
 			"targets": [
 				"mobile",
 				"desktop"
 			],
 			"dependencies": [
-				"mobile.startup"
-			],
-			"position": "top",
-			"styles": [
-				"resources/mobile.messageBox/messageBox.less"
+				"mobile.startup",
+				"mobile.messageBox.styles"
 			],
 			"templates": {
 				"MessageBox.hogan": "resources/mobile.messageBox/MessageBox.mustache"
@@ -393,13 +419,13 @@
 				"toc"
 			]
 		},
-		"mobile.ajax": {
+		"mobile.ajax.styles": {
 			"targets": [
 				"mobile",
 				"desktop"
 			],
 			"styles": [
-				"resources/mobile.ajax/spinner.less"
+				"resources/mobile.ajax.styles/spinner.less"
 			]
 		},
 		"mobile.backtotop": {
@@ -431,7 +457,7 @@
 				"mobile.pagesummary.styles",
 				"mediawiki.notify",
 				"mobile.overlay.images",
-				"mobile.ajax",
+				"mobile.ajax.styles",
 				"mediawiki.language",
 				"mediawiki.jqueryMsg",
 				"mediawiki.user",
@@ -945,7 +971,7 @@
 			],
 			"dependencies": [
 				"mobile.startup",
-				"mobile.ajax",
+				"mobile.ajax.styles",
 				"mobile.search.util"
 			],
 			"scripts": [
@@ -958,6 +984,7 @@
 			"messages": [
 				"watchthispage",
 				"unwatchthispage",
+				"mobile-frontend-watchlist-error",
 				"mobile-frontend-watchlist-add",
 				"mobile-frontend-watchlist-removed",
 				"mobile-frontend-watchlist-cta",
@@ -1012,7 +1039,7 @@
 				"desktop"
 			],
 			"dependencies": [
-				"mobile.ajax",
+				"mobile.ajax.styles",
 				"mobile.special.nearby.styles",
 				"mediawiki.language",
 				"mobile.pagelist.scripts",
@@ -1159,14 +1186,6 @@
 				"mobile.startup"
 			],
 			"class": "MobileSiteModule"
-		},
-		"mobile.usermodule.styles": {
-			"class": "MobileUserStylesModule",
-			"position": "top"
-		},
-		"mobile.usermodule": {
-			"class": "MobileUserModule",
-			"position": "bottom"
 		},
 		"mobile.special.mobilecite.styles": {
 			"targets": "mobile",
@@ -1384,6 +1403,13 @@
 				"mobile-frontend-last-modified-with-user-months",
 				"mobile-frontend-last-modified-with-user-years",
 				"mobile-frontend-last-modified-with-user-just-now",
+				"mobile-frontend-joined-just-now",
+				"mobile-frontend-joined-seconds",
+				"mobile-frontend-joined-minutes",
+				"mobile-frontend-joined-hours",
+				"mobile-frontend-joined-days",
+				"mobile-frontend-joined-months",
+				"mobile-frontend-joined-years",
 				"mobile-frontend-cookies-required",
 				"mobile-frontend-console-recruit",
 				"mobile-frontend-redirected-from"
@@ -1463,12 +1489,12 @@
 				"resources/skins.minerva.editor/init.js"
 			]
 		},
-		"skins.minerva.fallbackeditor": {
+		"mobile.fallbackeditor.styles": {
 			"targets": [
 				"mobile"
 			],
 			"styles": [
-				"resources/skins.minerva.fallbackeditor/fallbackeditor.less"
+				"resources/mobile.fallbackeditor.styles/fallbackeditor.less"
 			]
 		},
 		"skins.minerva.backtotop": {
@@ -1601,6 +1627,9 @@
 		"APIGetDescription": [
 			"ApiParseExtender::onAPIGetDescription"
 		],
+		"RequestContextCreateSkinMobile": [
+			"MinervaHooks::onRequestContextCreateSkinMobile"
+		],
 		"RequestContextCreateSkin": [
 			"MobileFrontendHooks::onRequestContextCreateSkin"
 		],
@@ -1650,6 +1679,7 @@
 			"MobileFrontendHooks::onAbuseFilterBuilder"
 		],
 		"SpecialPageBeforeExecute": [
+			"MinervaHooks::onSpecialPageBeforeExecute",
 			"MobileFrontendHooks::onSpecialPageBeforeExecute"
 		],
 		"UserLoginComplete": [
@@ -1663,9 +1693,6 @@
 		],
 		"GetPreferences": [
 			"MobileFrontendHooks::onGetPreferences"
-		],
-		"GetBetaFeaturePreferences": [
-			"MobileFrontendHooks::onGetBetaFeaturePreferences"
 		],
 		"Gadgets::allowLegacy": [
 			"MobileFrontendHooks::onAllowLegacyGadgets"
@@ -1714,6 +1741,8 @@
 		]
 	},
 	"config": {
+		"MFContentProviderClass": "MobileFrontend\\ContentProviders\\DefaultContentProvider",
+		"MFMwApiContentProviderBaseUri": "https://en.wikipedia.org/w/api.php",
 		"MFEnableXAnalyticsLogging": false,
 		"MFAppPackageId": false,
 		"MFAppScheme": "http",
@@ -1721,7 +1750,6 @@
 			"anonymousEditing": true,
 			"skipPreview": false
 		},
-		"MFIgnoreEventLoggingBucketing": false,
 		"MFExperiments": {
 			"betaoptin": {
 				"name": "betaoptin",
@@ -1733,7 +1761,6 @@
 			},
 			"_merge_strategy": "array_plus_2d"
 		},
-		"MFEnableMinervaBetaFeature": false,
 		"MFEnableJSConsoleRecruitment": false,
 		"MFMobileFormatterHeadings": [
 			"h1",
@@ -1749,7 +1776,7 @@
 		"MFMobileHeader": "X-Subdomain",
 		"MFRemovableClasses": {
 			"beta": [],
-			"base": []
+			"base": [ ".toc", ".mw-editsection", ".navbox", ".nomobile" ]
 		},
 		"MFShowFirstParagraphBeforeInfobox": {
 			"base": false,
@@ -1759,6 +1786,7 @@
 			"base": false,
 			"beta": true
 		},
+		"MFLazyLoadSkipSmallImages": false,
 		"MFLazyLoadReferences": {
 			"base": false,
 			"beta": false
@@ -1788,12 +1816,16 @@
 		"MFNoindexPages": true,
 		"MFStopRedirectCookieHost": null,
 		"MFCustomLogos": [],
+		"MinervaCustomLogos": [],
 		"MobileFrontendLogo": false,
-		"MFTrademarkSitename": false,
 		"MFEnableBeta": false,
 		"MFContentNamespace": 0,
 		"MFDefaultSkinClass": "SkinMinerva",
 		"MinervaApplyKnownTemplateHacks": false,
+		"MinervaPrintStyles": {
+			"base": false,
+			"beta": true
+		},
 		"MinervaPageActions": [
 			"edit",
 			"talk",
@@ -1828,16 +1860,12 @@
 			"beta": true
 		},
 		"MinervaEnableFontChanger": {
-		  "base": false,
-		  "beta": true
+			"base": false,
+			"beta": true
 		},
 		"MinervaEnableBackToTop": {
 			"base": false,
 			"beta": true
-		},
-		"MinervaUseHeaderV2": {
-			"beta": true,
-			"base": false
 		},
 		"MFStripResponsiveImages": true,
 		"MFResponsiveImageWhitelist": [
@@ -1845,7 +1873,8 @@
 		],
 		"MFEnableManifest": true,
 		"MFManifestThemeColor": "#252525",
-		"MFManifestBackgroundColor": "#FFFFFF"
+		"MFManifestBackgroundColor": "#FFFFFF",
+		"MFLogWrappedInfoboxes": true
 	},
 	"manifest_version": 1
 }

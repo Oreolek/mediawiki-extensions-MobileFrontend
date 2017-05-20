@@ -1,4 +1,4 @@
-( function ( M, mw, $ ) {
+( function ( M, mw ) {
 	/**
 	 * Coordinates the logging of MobileWebSchema events.
 	 * Implements schema defined at https://meta.wikimedia.org/wiki/Schema:MobileWebSearch
@@ -99,20 +99,17 @@
 	 * Convenience function that wires up an instance of the
 	 * MobileWebSearchLogger class to the search-* events emitted by the
 	 * search overlay.
+	 * @param {SearchOverlay} searchOverlay
 	 */
-	MobileWebSearchLogger.register = function () {
+	MobileWebSearchLogger.register = function ( searchOverlay ) {
 		var logger = new MobileWebSearchLogger();
 
-		$.each( {
-			'search-show': logger.onSearchShow,
-			'search-start': logger.onSearchStart,
-			'search-results': logger.onSearchResults,
-			'search-result-click': logger.onSearchResultClick
-		}, function ( eventName, handler ) {
-			M.on( eventName, $.proxy( handler, logger ) );
-		} );
+		searchOverlay.on( 'search-show', logger.onSearchShow.bind( logger ) );
+		searchOverlay.on( 'search-start', logger.onSearchStart.bind( logger ) );
+		searchOverlay.on( 'search-results', logger.onSearchResults.bind( logger ) );
+		searchOverlay.on( 'search-result-click', logger.onSearchResultClick.bind( logger ) );
 	};
 
 	M.define( 'mobile.search/MobileWebSearchLogger', MobileWebSearchLogger );
 
-}( mw.mobileFrontend, mw, jQuery ) );
+}( mw.mobileFrontend, mw ) );

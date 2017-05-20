@@ -147,15 +147,6 @@ Options to control several functions of the mobile editor.  Possible values:
   ]
 ```
 
-#### $wgMFIgnoreEventLoggingBucketing
-
-Disable EventLogging bucketing for purposes of development.  When enabled all
-events are logged regardless of any existing sampling rate specified in the
-schema.
-
-* Type: `Boolean`
-* Default: `false`
-
 #### $wgMFExperiments
 
 A list of experiments active on the skin.
@@ -199,6 +190,23 @@ See: <https://www.mediawiki.org/wiki/Reading/Features/Article_lead_image>
 
 * Type: `Boolean`
 * Default: `true`
+
+#### $wgMFContentProviderClass
+
+Name of PHP class that is responsible for formatting HTML for mobile.
+Must implement IContentProvider.
+
+* Type: `string`
+* Default: `DefaultContentProvider`
+
+
+#### $wgMwApiContentProviderBaseUri"
+
+URL to be used by the MwApiMobileFormatter class. Points to a MediaWiki
+API that can be queried to obtain content.
+
+* Type: `string`
+* Default: `https://en.wikipedia.org/w/api.php`
 
 #### $wgMFMobileFormatterHeadings
 
@@ -339,12 +347,9 @@ When enabled and hacks.less exists, hacks.less workarounds are included in style
 * Type: `Boolean`
 * Default: `false`
 
-#### $wgMinervaUseHeaderV2
+#### $wgMinervaPrintStyles
 
-A temporary configuration variable to control display of a new header which converts the search input
-to an icon and shows the site logo.
-
-The config variable currently controls whether the styles and template for new header should be invoked.
+A temporary configuration variable to control roll out of styles to improve the MobileFrontend print experience.
 
 * Type: `Array`
 * Default:
@@ -517,6 +522,10 @@ include the preceding `.` (e.g. yes: `.wikipedia.org`, **no**: `wikipedia.org`)
 
 #### $wgMFCustomLogos
 
+Use $wgMinervaCustomLogos instead.
+
+#### $wgMinervaCustomLogos
+
 Make the logos configurable.
 
 Currently, `copyright`, `copyright-width`, and `copyright-height` elements are
@@ -553,19 +562,6 @@ Path to the logo used in the login/signup form.  The standard height is `72px`
 * Type: `Boolean`
 * Default: `false`
 
-#### $wgMFTrademarkSitename
-
-Whether to append a trademark notice to the sitename in the page footer.
-
-* If set to `true` or `'unregistered'`, adds a ™ to the sitename.
-* If set to `'registered'` adds a ® to the sitename.
-* If set to `false`, adds nothing (the default).
-
-Alternatively, you can also edit the `mobile-frontend-footer-sitename`
-message directly.
-
-* Type: `Boolean`
-* Default: `false`
 
 #### $wgMFEnableBeta
 
@@ -687,6 +683,13 @@ $wgMFDisplayWikibaseDescriptions = [
     'tagline' => false,
   ]
 ```
+
+#### $wgMFAllowNonJavaScriptEditing
+
+Adds support for non-JavaScript editing on mobile skins.
+
+* Type: `Boolean`
+* Default: `false`
 
 #### $wgMFStripResponsiveImages
 

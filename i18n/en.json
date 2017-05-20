@@ -38,8 +38,6 @@
 		]
 	},
 	"abusefilter-edit-builder-vars-user-mobile": "Whether or not a user is editing through the mobile interface",
-	"beta-feature-minerva": "Enable mobile skin ({{int:skinname-minerva}}) on desktop",
-	"beta-feature-minerva-description": "Make the skin used on mobile devices a selectable desktop skin under the \"{{int:prefs-rendering}}\" preferences tab.",
 	"mobile-frontend-account-create-captcha-placeholder": "Enter confirmation code",
 	"mobile-frontend-categories-heading": "<strong>Categories</strong>",
 	"mobile-frontend-categories-subheading": "The page belongs to the following categories:",
@@ -144,6 +142,13 @@
 	"mobile-frontend-history-no-results": "The filter provided no history matches.",
 	"mobile-frontend-home-button": "Home",
 	"mobile-frontend-images-status": "Images",
+	"mobile-frontend-joined-just-now": "{{GENDER:$1|Joined}} just now",
+	"mobile-frontend-joined-seconds": "{{GENDER:$1|Joined}} {{PLURAL:$2|$2 second|$2 seconds}} ago",
+	"mobile-frontend-joined-minutes": "{{GENDER:$1|Joined}} {{PLURAL:$2|$2 minute|$2 minutes}} ago",
+	"mobile-frontend-joined-hours": "{{GENDER:$1|Joined}} {{PLURAL:$2|$2 hour|$2 hours}} ago",
+	"mobile-frontend-joined-days": "{{GENDER:$1|Joined}} {{PLURAL:$2|$2 day|$2 days}} ago",
+	"mobile-frontend-joined-months": "{{GENDER:$1|Joined}} {{PLURAL:$2|$2 month|$2 months}} ago",
+	"mobile-frontend-joined-years": "{{GENDER:$1|Joined}} {{PLURAL:$2|$2 year|$2 years}} ago",
 	"mobile-frontend-language-change": "Change language",
 	"mobile-frontend-language-article-heading": "Read in another language",
 	"mobile-frontend-language-heading": "<strong>Languages</strong>",
@@ -275,7 +280,7 @@
 	"mobile-frontend-watchlist-purpose": "<strong>A watchlist helps you bookmark pages and keep track of changes to them.</strong><br />Log in to see it.",
 	"mobile-frontend-watchlist-removed": "Removed $1 from your watchlist",
 	"mobile-frontend-watchlist-signup-action": "<strong>A watchlist helps you bookmark pages and keep track of changes to them.</strong><br />Sign up to start one now.",
-	"mobile-frontend-user-page-member-since": "{{GENDER:$2|Member}} since $1",
+	"mobile-frontend-user-page-member-since": "{{GENDER:$2|Joined}} $1",
 	"mobile-frontend-user-page-talk": "Talk",
 	"mobile-frontend-user-page-contributions": "Contributions",
 	"mobile-frontend-user-page-uploads": "Uploads",
@@ -332,5 +337,6 @@
 	"mobile-frontend-panel-cancel": "No thanks",
 	"mobile-frontend-panel-betaoptin-msg": "Do you want to try some new features? By joining the beta, you will get access to experimental features, at the risk of encountering bugs and issues.",
 	"mobile-frontend-search-feedback-link-text": "Give us your feedback.",
-	"mobile-frontend-search-feedback-prompt": "Couldn't find what you were looking for?"
+	"mobile-frontend-search-feedback-prompt": "Couldn't find what you were looking for?",
+	"mobile-frontend-notifications-filter-title": "Filter notifications"
 }

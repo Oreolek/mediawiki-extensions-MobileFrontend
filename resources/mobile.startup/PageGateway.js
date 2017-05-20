@@ -1,5 +1,6 @@
 ( function ( M, $ ) {
-	var sectionTemplate = mw.template.get( 'mobile.startup', 'Section.hogan' );
+	var sectionTemplate = mw.template.get( 'mobile.startup', 'Section.hogan' ),
+		cache = {};
 
 	/**
 	 * Add child to listOfSections if the level of child is the same as the last
@@ -37,16 +38,17 @@
 	 * @return {Array} Ordered array of sections
 	 */
 	function transformSections( sections ) {
-		var
-			collapseLevel = Math.min.apply( this, $.map( sections, function ( s ) {
-				return s.level;
-			} ) ).toString(),
+		var sectionLevels = sections.map( function ( s ) { return s.level; } ),
+			existingSectionLevels = sectionLevels.filter( function ( level ) {
+				return !!level;
+			} ),
+			collapseLevel = Math.min.apply( this, existingSectionLevels ).toString(),
 			lastSection,
 			result = [];
 
 		// if the first section level is not equal to collapseLevel, this first
 		// section will not have a parent and will be appended to the result.
-		$.each( sections, function ( i, section ) {
+		sections.forEach( function ( section ) {
 			if ( section.line !== undefined ) {
 				section.line = section.line.replace( /<\/?a\b[^>]*>/g, '' );
 			}
@@ -87,7 +89,6 @@
 	 */
 	function PageGateway( api ) {
 		this.api = api;
-		this.cache = {};
 	}
 
 	PageGateway.prototype = {
@@ -110,8 +111,8 @@
 					edit: [ '*' ]
 				};
 
-			if ( !this.cache[title] ) {
-				page = this.cache[title] = $.Deferred();
+			if ( !cache[title] ) {
+				page = cache[title] = $.Deferred();
 				this.api.get( {
 					action: 'mobileview',
 					page: title,
@@ -178,7 +179,7 @@
 				} ).fail( $.proxy( page, 'reject' ) );
 			}
 
-			return this.cache[title];
+			return cache[title];
 		},
 
 		/**
@@ -188,7 +189,7 @@
 		 * @param {string} title the title of the page who's cache you want to invalidate
 		 */
 		invalidatePage: function ( title ) {
-			delete this.cache[title];
+			delete cache[title];
 		},
 
 		/**
@@ -210,11 +211,13 @@
 			}
 
 			// Create the data object for each variant and store it
-			$.each( generalData.variants, function ( index, item ) {
-				var variant = {
-					autonym: item.name,
-					lang: item.code
-				};
+			Object.keys( generalData.variants ).forEach( function ( index ) {
+				var item = generalData.variants[ index ],
+					variant = {
+						autonym: item.name,
+						lang: item.code
+					};
+
 				if ( variantPath ) {
 					variant.url = variantPath
 						.replace( '$1', title )

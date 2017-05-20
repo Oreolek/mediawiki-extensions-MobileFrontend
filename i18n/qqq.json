@@ -34,12 +34,11 @@
 			"JoostBotman",
 			"Orlodrim",
 			"UV",
-			"Nike"
+			"Nike",
+			"Arthur2e5"
 		]
 	},
 	"abusefilter-edit-builder-vars-user-mobile": "AbuseFilter extension rule variable that allows distinguishing edits based on if they have been made using the editor of MobileFrontend or not.",
-	"beta-feature-minerva": "Name of the Minerva beta feature. Used as checkbox label.\n\nRefers to {{msg-mw|Skinname-minerva}}.\n\nSee also:\n* {{msg-mw|Beta-feature-minerva-description}}",
-	"beta-feature-minerva-description": "Describe the Minerva beta feature - it makes a new skin available.\n\nThis description is for the label {{msg-mw|Beta-feature-minerva}}.",
 	"mobile-frontend-account-create-captcha-placeholder": "Placeholder for captcha input field",
 	"mobile-frontend-categories-heading": "Title of the list of categories this page is categorized in.\n{{Identical|Category}}",
 	"mobile-frontend-categories-subheading": "Introduction text for the list of categories, the page belongs to.",
@@ -89,7 +88,7 @@
 	"mobile-frontend-editor-cancel": "Caption for cancel button on edit form.\n{{Identical|Cancel}}",
 	"mobile-frontend-editor-cancel-confirm": "Question asking user if they are positive about abandoning unsaved edit.",
 	"mobile-frontend-editor-captcha-try-again": "A message shown when user enters wrong CAPTCHA and a new one is displayed.",
-	"mobile-frontend-editor-continue": "Caption for the next button on edit form which takes you to the screen that shows a preview and license information.\n{{Identical|Next}}",
+	"mobile-frontend-editor-continue": "Caption for the next (as in \"next step\") button on edit form which takes you to the screen that shows a preview and license information.\n{{Identical|Next}}",
 	"mobile-frontend-editor-cta": "Caption for call to action when an anonymous user clicks on edit icon. (Note the mobile site currently doesn't allow anonymous editing.)\n{{Identical|Help improve this page}}",
 	"mobile-frontend-editor-disabled": "Toast message that appears when a user is unable to edit a page and clicks edit icon.",
 	"mobile-frontend-editor-edit": "Caption for the link showing edit form. (In the imperative mood)\n{{Identical|Edit}}",
@@ -144,6 +143,13 @@
 	"mobile-frontend-history-no-results": "Error shown when there are no history entires for a given/invalid filter.",
 	"mobile-frontend-home-button": "This is the label of one of the buttons that appear if you click the wiki logo near the search box.\n\nThis buttons takes the user to the home page.\n{{Identical|Home}}",
 	"mobile-frontend-images-status": "On settings page label for turning on/off images.\n{{Identical|Image}}",
+	"mobile-frontend-joined-just-now": "Shown on userpages providing information how long the user is registered (in this case, less than 10 seconds = just now). Parameter $1 gender.",
+	"mobile-frontend-joined-seconds": "Shown on userpages providing information how long the user is registered. Parameters: $1: gender, $2: number of seconds",
+	"mobile-frontend-joined-minutes": "Shown on userpages providing information how long the user is registered. Parameters: $1: gender, $2: number of minutes",
+	"mobile-frontend-joined-hours": "Shown on userpages providing information how long the user is registered. Parameters: $1: gender, $2: number of hours",
+	"mobile-frontend-joined-days": "Shown on userpages providing information how long the user is registered. Parameters: $1: gender, $2: number of days",
+	"mobile-frontend-joined-months": "Shown on userpages providing information how long the user is registered. Parameters: $1: gender, $2: number of months",
+	"mobile-frontend-joined-years": "Shown on userpages providing information how long the user is registered. Parameters: $1: gender, $2: number of years",
 	"mobile-frontend-language-change": "Text of a pointer which points at the new button that allows you to switch language when the old language button is clicked.\n{{Identical|Change language}}",
 	"mobile-frontend-language-article-heading": "Button label prompting reader to read in another language. The button is only visible when at least one other language is available. Found at bottom of page.",
 	"mobile-frontend-language-heading": "The title for the list of languages for a page.\n{{Identical|Language}}",
@@ -332,5 +338,6 @@
 	"mobile-frontend-panel-cancel": "Label for button in panel replying in negative.\n{{Identical|No thanks}}",
 	"mobile-frontend-panel-betaoptin-msg": "Message in panel asking if user wants to opt in to beta.",
 	"mobile-frontend-search-feedback-link-text": "Text of anchor linking to a form for the user to give feedback on search results.",
-	"mobile-frontend-search-feedback-prompt": "Text shown in front of an anchor linking to a form for the user to give feedback on search results."
+	"mobile-frontend-search-feedback-prompt": "Text shown in front of an anchor linking to a form for the user to give feedback on search results.",
+	"mobile-frontend-notifications-filter-title": "Title shown in the notifications filter page on click of the Filter button"
 }

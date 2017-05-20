@@ -31,7 +31,7 @@
 	 * @ignore
 	 */
 	function getExpandedSections( page ) {
-		var expandedSections = $.parseJSON(
+		var expandedSections = JSON.parse(
 			settings.get( 'expandedSections', false ) || '{}'
 		);
 		expandedSections[page.title] = expandedSections[page.title] || {};
@@ -93,7 +93,7 @@
 				expandedSections[page.title][$headline.attr( 'id' )] &&
 				!$sectionHeading.hasClass( 'open-block' )
 			) {
-				toggler.toggle.call( toggler, $sectionHeading, page );
+				toggler.toggle( $sectionHeading, page );
 			}
 		} );
 	}
@@ -109,9 +109,11 @@
 			expandedSections = getExpandedSections( page ),
 			// the number of days between now and the time a setting was saved
 			daysDifference;
-		$.each( expandedSections, function ( page, sections ) {
+		Object.keys( expandedSections ).forEach( function ( page ) {
+			var sections = expandedSections[ page ];
 			// clean the setting if it is more than a day old
-			$.each( sections, function ( section, timestamp ) {
+			Object.keys( sections ).forEach( function ( section ) {
+				var timestamp = sections[ section ];
 				daysDifference = Math.floor( ( now - timestamp ) / 1000 / 60 / 60 / 24 );
 				if ( daysDifference >= 1 ) {
 					delete expandedSections[page][section];
@@ -182,7 +184,7 @@
 		$heading.on( 'keypress', function ( ev ) {
 			if ( ev.which === 13 || ev.which === 32 ) {
 				// Only handle keypresses on the "Enter" or "Space" keys
-				toggler.toggle.call( toggler, $( this ) );
+				toggler.toggle( $( this ) );
 			}
 		} ).find( 'a' ).on( 'keypress mouseup', function ( ev ) {
 			ev.stopPropagation();
@@ -270,7 +272,7 @@
 						if ( !ev.target.href ) {
 							// prevent taps/clicks on edit button after toggling (bug 56209)
 							ev.preventDefault();
-							self.toggle.call( self, $( this ) );
+							self.toggle( $( this ) );
 						}
 					} );
 
@@ -297,7 +299,7 @@
 				enableKeyboardActions( self, $heading );
 				if ( !isReferenceSection && ( !isClosed && browser.isWideScreen() || expandSections ) ) {
 					// Expand sections by default on wide screen devices or if the expand sections setting is set
-					self.toggle.call( self, $heading );
+					self.toggle( $heading );
 				}
 			}
 		} );

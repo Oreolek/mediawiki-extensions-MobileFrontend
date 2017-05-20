@@ -63,8 +63,6 @@
 			drawer.render( {
 				text: undefined
 			} );
-			// use setTimeout so that browser calculates dimensions before show()
-			setTimeout( $.proxy( drawer, 'show' ), 0 );
 		}
 	}
 
@@ -88,7 +86,7 @@
 	 * @param {Page} page
 	 */
 	function setup( page ) {
-		var $refs = page.$( 'sup a' );
+		var $refs = page.$( 'sup.reference a' );
 
 		if ( $refs.length ) {
 			$refs

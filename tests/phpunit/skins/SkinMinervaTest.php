@@ -3,23 +3,32 @@
 namespace Tests\MobileFrontend\Skins;
 
 use MediaWikiTestCase;
-use MobileContext;
+use MobileUI;
+use MWTimestamp;
 use OutputPage;
+use QuickTemplate;
+use RequestContext;
 use SkinMinerva;
-use TestingAccessWrapper;
+use SpecialPage;
 use Title;
+use User;
+use Wikimedia\TestingAccessWrapper;
 
-class TestSkinMinerva extends SkinMinerva {
+class Template extends QuickTemplate {
+	public function execute() {
+	}
+}
 
-	/**
-	 * The Minimum Viable Constructor for SkinMinerva.
-	 *
-	 * @FIXME Why doesn't SkinMinerva have its dependencies injected?
-	 *
-	 * @param MobileContext $mobileContext
-	 */
-	public function __construct( MobileContext $mobileContext ) {
-		$this->mobileContext = $mobileContext;
+class EchoNotifUser {
+	public function __construct( $echoLastUnreadNotificationTime, $echoNotificationCount ) {
+		$this->echoLastUnreadNotificationTime = $echoLastUnreadNotificationTime;
+		$this->echoNotificationCount = $echoNotificationCount;
+	}
+	public function getLastUnreadNotificationTime() {
+		return $this->echoLastUnreadNotificationTime;
+	}
+	public function getNotificationCount() {
+		return $this->echoNotificationCount;
 	}
 }
 
@@ -45,21 +54,38 @@ class SkinMinervaTest extends MediaWikiTestCase {
 	private function addToBodyAttributes(
 		$bodyClassName
 	) {
-		$context = MobileContext::singleton();
+		$context = RequestContext::getMain();
+		$context->setTitle( Title::newFromText( 'Test' ) );
 
 		$outputPage = $context->getOutput();
 		$outputPage->setProperty( 'bodyClassName', $bodyClassName );
 
 		$bodyAttrs = [ 'class' => '' ];
 
-		$this->factorySkin( $context )
-			->addToBodyAttributes( $outputPage, $bodyAttrs );
+		$skin = new SkinMinerva();
+		$skin->addToBodyAttributes( $outputPage, $bodyAttrs );
 
 		return explode( ' ', $bodyAttrs[ 'class' ] );
 	}
 
-	private function factorySkin( MobileContext $context ) {
-		return new TestSkinMinerva( $context );
+	public function testHasCategoryLinksWhenOptionIsOff() {
+		$outputPage = $this->getMockBuilder( OutputPage::class )
+			->disableOriginalConstructor()
+			->getMock();
+		$outputPage->expects( $this->never() )
+			->method( 'getCategoryLinks' );
+
+		$context = RequestContext::getMain();
+		$context->setTitle( Title::newFromText( 'Test' ) );
+		$context->setOutput( $outputPage );
+
+		$skin = new SkinMinerva();
+		$skin->setContext( $context );
+		$skin->setSkinOptions( [ SkinMinerva::OPTION_CATEGORIES => false ] );
+
+		$skin = TestingAccessWrapper::newFromObject( $skin );
+
+		$this->assertEquals( $skin->hasCategoryLinks(), false );
 	}
 
 	/**
@@ -75,14 +101,16 @@ class SkinMinervaTest extends MediaWikiTestCase {
 			->method( 'getCategoryLinks' )
 			->will( $this->returnValue( $categoryLinks ) );
 
-		$skin = TestingAccessWrapper::newFromObject(
-			$this->getMockBuilder( SkinMinerva::class )
-				->disableOriginalConstructor()
-				->getMock()
-		);
-		$skin->expects( $this->once() )
-			->method( 'getOutput' )
-			->will( $this->returnValue( $outputPage ) );
+		$context = RequestContext::getMain();
+		$context->setTitle( Title::newFromText( 'Test' ) );
+		$context->setOutput( $outputPage );
+
+		$skin = new SkinMinerva();
+		$skin->setContext( $context );
+		$skin->setSkinOptions( [ SkinMinerva::OPTION_CATEGORIES => true ] );
+
+		$skin = TestingAccessWrapper::newFromObject( $skin );
+
 		$this->assertEquals( $skin->hasCategoryLinks(), $expected );
 	}
 
@@ -122,12 +150,12 @@ class SkinMinervaTest extends MediaWikiTestCase {
 	 *
 	 * @covers       SkinMinerva::getContextSpecificModules
 	 * @dataProvider provideGetContextSpecificModules
-	 * @param string $configName Config name that needs to be set
-	 * @param mixed $configValue Config value that is assigned to $configName
+	 * @param string $fontchangerValue whether font changer feature is enabled
+	 * @param mixed  $backToTopValue whether back to top feature is enabled
 	 * @param string $moduleName Module name that is being tested
 	 * @param bool $expected Whether the module is expected to be returned by the function being tested
 	 */
-	public function testGetContextSpecificModules( $configName, $configValue,
+	public function testGetContextSpecificModules( $fontchangerValue, $backToTopValue,
 												   $moduleName, $expected ) {
 		$skin = TestingAccessWrapper::newFromObject(
 			$this->getMockBuilder( SkinMinerva::class )
@@ -135,15 +163,14 @@ class SkinMinervaTest extends MediaWikiTestCase {
 				->setMethods( [ 'getTitle' ] )
 				->getMock()
 		);
-		$skin->mobileContext = MobileContext::singleton();
-		$skin->isMobileMode = $skin->mobileContext->shouldDisplayMobileView();
 		$title = Title::newFromText( 'Test' );
 		$skin->expects( $this->any() )
 			->method( 'getTitle' )
 			->will( $this->returnValue( $title ) );
 
-		$this->setMwGlobals( $configName, [
-			'base' => $configValue
+		$skin->setSkinOptions( [
+			'fontChanger' => $fontchangerValue,
+			'backToTop' => $backToTopValue,
 		] );
 
 		if ( $expected ) {
@@ -155,10 +182,207 @@ class SkinMinervaTest extends MediaWikiTestCase {
 
 	public function provideGetContextSpecificModules() {
 		return [
-			[ 'wgMinervaEnableFontChanger', true, 'skins.minerva.fontchanger', true ],
-			[ 'wgMinervaEnableFontChanger', false, 'skins.minerva.fontchanger', false ],
-			[ 'wgMinervaEnableBackToTop', true, 'skins.minerva.backtotop', true ],
-			[ 'wgMinervaEnableBackToTop', false, 'skins.minerva.backtotop', false ],
+			[ true, false, 'skins.minerva.fontchanger', true ],
+			[ false, true, 'skins.minerva.fontchanger', false ],
+			[ false, true, 'skins.minerva.backtotop', true ],
+			[ false, false, 'skins.minerva.backtotop', false ],
 		];
+	}
+
+	/**
+	 * Test the notification user button
+	 *
+	 * @covers SkinMinerva::prepareUserButton
+	 * @dataProvider providePrepareUserButton
+	 * @param array|string $expectedSecondaryButtonData Expected test case outcome
+	 * @param string $message Test message
+	 * @param Title $title
+	 * @param bool $useEcho Whether to use Extension:Echo
+	 * @param bool $isUserLoggedIn
+	 * @param string $newtalks New talk page messages for the current user
+	 * @param MWTimestamp|bool $echoLastUnreadNotificationTime Timestamp or false
+	 * @param int $echoNotificationCount
+	 * @param string|bool $echoSeenTime String in format TS_ISO_8601 or false
+	 * @param string $formattedEchoNotificationCount
+	 */
+	public function testPrepareUserButton(
+		$expectedSecondaryButtonData, $message, $title, $useEcho, $isUserLoggedIn,
+		$newtalks, $echoLastUnreadNotificationTime = false,
+		$echoNotificationCount = false, $echoSeenTime = false,
+		$formattedEchoNotificationCount = false
+	) {
+		$user = $this->getMockBuilder( User::class )
+			->disableOriginalConstructor()
+			->setMethods( [ 'isLoggedIn' ] )
+			->getMock();
+		$user->expects( $this->any() )
+			->method( 'isLoggedIn' )
+			->will( $this->returnValue( $isUserLoggedIn ) );
+
+		$skin = TestingAccessWrapper::newFromObject(
+			$this->getMockBuilder( SkinMinerva::class )
+				->disableOriginalConstructor()
+				->setMethods( [ 'getTitle', 'getUser', 'getNewtalks', 'useEcho',
+								'getEchoNotifUser', 'getEchoSeenTime',
+								'getFormattedEchoNotificationCount' ] )
+				->getMock()
+		);
+		$skin->expects( $this->any() )
+			->method( 'getTitle' )
+			->will( $this->returnValue( $title ) );
+		$skin->expects( $this->any() )
+			->method( 'getUser' )
+			->will( $this->returnValue( $user ) );
+		$skin->expects( $this->any() )
+			->method( 'getNewtalks' )
+			->will( $this->returnValue( $newtalks ) );
+		$skin->expects( $this->any() )
+			->method( 'useEcho' )
+			->will( $this->returnValue( $useEcho ) );
+		$skin->expects( $this->any() )
+			->method( 'getEchoNotifUser' )
+			->will( $this->returnValue(
+				new EchoNotifUser(
+					$echoLastUnreadNotificationTime, $echoNotificationCount
+				)
+			) );
+		$skin->expects( $this->any() )
+			->method( 'getEchoSeenTime' )
+			->will( $this->returnValue( $echoSeenTime ) );
+		$skin->expects( $this->any() )
+			->method( 'getFormattedEchoNotificationCount' )
+			->will( $this->returnValue( $formattedEchoNotificationCount ) );
+
+		$tpl = new Template();
+		$skin->prepareUserButton( $tpl );
+		$this->assertEquals(
+			$expectedSecondaryButtonData,
+			$tpl->get( 'secondaryButtonData' ),
+			$message
+		);
+	}
+
+	/**
+	 * Utility function that returns the expected secondary button data given parameters
+	 * @param Title $title Page title
+	 * @param string $notificationsMsg
+	 * @param string $notificationsTitle
+	 * @param string $countLabel
+	 * @param bool $isZero
+	 * @param bool $hasUnseen
+	 */
+	private function getSecondaryButtonExpectedResult(
+		$title,
+		$notificationsMsg,
+		$notificationsTitle,
+		$countLabel,
+		$isZero,
+		$hasUnseen
+	) {
+		return [
+			'class' => MobileUI::iconClass( 'notifications' ),
+			'title' => $notificationsMsg,
+			'url' => SpecialPage::getTitleFor( $notificationsTitle )
+				->getLocalURL(
+					[ 'returnto' => $title->getPrefixedText() ] ),
+			'notificationCount' => $countLabel,
+			'isNotificationCountZero' => $isZero,
+			'hasUnseenNotifications' => $hasUnseen
+		];
+	}
+
+	/**
+	 * Data provider for the test case testPrepareUserButton with Echo enabled
+	 * @param Title @title Page title
+	 */
+	private function providePrepareUserButtonEcho( Title $title ) {
+		return [
+			[ '', 'Echo, not logged in, no talk page alerts',
+			  $title, true, false, '' ],
+			[ '', 'Echo, logged in, no talk page alerts',
+			  Title::newFromText( 'Special:Notifications' ), true, true, '' ],
+			[ '', 'Echo, logged in, talk page alert',
+			  Title::newFromText( 'Special:Notifications' ), true, true,
+			  'newtalks alert' ],
+			[ $this->getSecondaryButtonExpectedResult(
+				$title,
+				'Show my notifications',
+				'Notifications',
+				'99+',
+				false,
+				true
+			  ), 'Echo, logged in, no talk page alerts, 110 notifications, ' +
+			  'last un-read nofication time after last echo seen time',
+			  $title, true, true, '',
+			  MWTimestamp::getInstance( strtotime( '2017-05-11T21:23:20Z' ) ),
+			  110, '2017-05-11T20:23:20Z', '99+' ],
+			[ $this->getSecondaryButtonExpectedResult(
+				$title,
+				'Show my notifications',
+				'Notifications',
+				'3',
+				false,
+				false
+			  ), 'Echo, logged in, no talk page alerts, 3 notifications, ' +
+			  'last un-read nofication time before last echo seen time',
+			  $title, true, true, '',
+			  MWTimestamp::getInstance( strtotime( '2017-05-11T21:23:20Z' ) ),
+			  3, '2017-05-11T22:23:20Z', '3' ],
+			[ $this->getSecondaryButtonExpectedResult(
+				$title,
+				'Show my notifications',
+				'Notifications',
+				'5',
+				false,
+				false
+			  ), 'Echo, logged in, no talk page alerts, 5 notifications, ' +
+			  'no last un-read nofication time',
+			  $title, true, true, '', false, 5, '2017-05-11T22:23:20Z', '5' ],
+			[ $this->getSecondaryButtonExpectedResult(
+				$title,
+				'Show my notifications',
+				'Notifications',
+				'0',
+				true,
+				false
+			  ), 'Echo, logged in, no talk page alerts, 0 notifications, ' +
+			  'no last echo seen time',
+			  $title, true, true, '',
+			  MWTimestamp::getInstance( strtotime( '2017-05-11T21:23:20Z' ) ),
+			  0, false, '0' ]
+		];
+	}
+
+	/**
+	 * Data provider for the test case testPrepareUserButton with Echo disabled
+	 * @param Title @title Page title
+	 */
+	private function providePrepareUserButtonNoEcho( Title $title ) {
+		return [
+			[ '', 'No Echo, not logged in, no talk page alerts',
+			  $title, false, false, '' ],
+			[ '', 'No Echo, logged in, no talk page alerts',
+			  $title, false, true, '' ],
+			[ $this->getSecondaryButtonExpectedResult(
+				$title,
+				'You have new messages on your talk page',
+				'Mytalk',
+				'',
+				true,
+				false
+			  ), 'No Echo, not logged in, talk page alert',
+			  $title, false, false, 'newtalks alert' ],
+		];
+	}
+
+	/**
+	 * Data provider for the test case testPrepareUserButton
+	 */
+	public function providePrepareUserButton() {
+		$title = Title::newFromText( 'Test' );
+		return array_merge(
+			$this->providePrepareUserButtonEcho( $title ),
+			$this->providePrepareUserButtonNoEcho( $title )
+		);
 	}
 }

@@ -56,21 +56,19 @@ nav {
 	float: left;
 	min-height: 100%;
 
-	.client-js & {
-		.secondary-action {
-			border: 0;
-			position: absolute;
-			right: 0;
-			top: 0;
-			bottom: 0;
-			padding-right: 0;
-			border-left: 1px solid @grayMediumLight;
-		}
+	.secondary-action {
+		border: 0;
+		position: absolute;
+		right: 0;
+		top: 0;
+		bottom: 0;
+		padding-right: 0;
+		border-left: 1px solid @grayMediumLight;
+	}
 
-		.primary-action {
-			// 1px for the logout icon border-left
-			margin-right: @iconSize + @iconGutterWidth * 2;
-		}
+	.primary-action {
+		// 1px for the logout icon border-left
+		margin-right: @iconSize + @iconGutterWidth * 2;
 	}
 
 	ul {
@@ -267,31 +265,5 @@ nav {
 		left: 0 !important;
 		.transform( translate( -@rightDrawerWidth, 0 ) );
 		width: 100%;
-	}
-}
-
-.rtl {
-	// FIXME: Make animations a conditional class on the drawer itself
-	&.animations .notifications-overlay.navigation-drawer {
-		// +2% to accommodate for the border/box-shadow
-		.transform( translate( -102%, 0 ) );
-
-		&.visible {
-			.transform( translate( 0, 0 ) );
-		}
-	}
-
-	&.primary-navigation-enabled.animations {
-		// FIXME: Menu shouldn't need to know about drawers
-		.drawer .position-fixed,
-		#mw-mf-page-center {
-			.transform( translate( -@menuWidth, 0 ) );
-		}
-	}
-
-	&.secondary-navigation-enabled.animations {
-		#mw-mf-page-center {
-			.transform( translate( @rightDrawerWidth, 0 ) );
-		}
 	}
 }

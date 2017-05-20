@@ -4,41 +4,122 @@
  */
 use MobileFrontend\MenuBuilder;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Logger\LoggerFactory;
 
 /**
  * Minerva: Born from the godhead of Jupiter with weapons!
  * A skin that works on both desktop and mobile
  * @ingroup Skins
  */
-class SkinMinerva extends SkinTemplate {
-	/** @var boolean $isMobileMode Describes whether reader is on a mobile device */
-	protected $isMobileMode = false;
+class SkinMinerva extends SkinTemplate implements ICustomizableSkin {
+	/** Set of keys for available skin options. See $skinOptions. */
+	const OPTION_MOBILE_OPTIONS = 'mobileOptionsLink';
+	const OPTION_CATEGORIES = 'categories';
+	const OPTION_FONT_CHANGER = 'fontChanger';
+	const OPTION_BACK_TO_TOP = 'backToTop';
+	const OPTION_TOGGLING = 'toggling';
+	const OPTION_PRINT_STYLES = 'printStyles';
+	const OPTIONS_MOBILE_BETA = 'beta';
+
 	/** @var string $skinname Name of this skin */
 	public $skinname = 'minerva';
 	/** @var string $template Name of this used template */
 	public $template = 'MinervaTemplate';
 	/** @var boolean $useHeadElement Specify whether show head elements */
 	public $useHeadElement = true;
-	/** @var string $mode Describes 'stability' of the skin - beta, stable */
-	protected $mode = 'stable';
-	/** @var MobileContext $mobileContext Safes an instance of MobileContext */
-	protected $mobileContext;
 	/** @var bool whether the page is the user's page, i.e. User:Username */
 	public $isUserPage = false;
 	/** @var ContentHandler Content handler of page; only access through getContentHandler */
 	protected $contentHandler = null;
 	/** @var bool Whether the page is also available in other languages or variants */
 	protected $doesPageHaveLanguages = false;
-	/** @var bool Whether to show the categories button on the page */
-	protected $shouldShowCategoriesButton = false;
 
 	/**
-	 * Wrapper for MobileContext::getMFConfig()
-	 * @see MobileContext::getMFConfig()
+	 * Return skin specific configuration
+	 * Note that while MobileFrontend and Minerva live in the same skin this will also return
+	 * MobileFrontend config.
 	 * @return Config
 	 */
 	public function getMFConfig() {
-		return $this->mobileContext->getMFConfig();
+		// FIXME: When Minerva lives in its own skin this will make sense and be Minerva.Config
+		return MediaWikiServices::getInstance()->getService( 'MobileFrontend.Config' );
+	}
+
+	/**
+	 * Returns the site name for the footer, either as a text or <img> tag
+	 * @return string
+	 */
+	public function getSitename() {
+		$config = $this->getMFConfig();
+		$mfLogos = $config->get( 'MFCustomLogos' );
+		// use of MFCustomLogos is kept for backwards compatibility.
+		$customLogos = array_merge( $config->get( 'MinervaCustomLogos' ),
+			$mfLogos );
+
+		// FIXME: Remove when config has been updated.
+		if ( $mfLogos && count( $mfLogos ) > 0 ) {
+			LoggerFactory::getInstance( 'mobile' )->info(
+				"MFCustomLogos config option is deprecated. Please use MinervaCustomLogos instead."
+			);
+		}
+
+		$footerSitename = $this->msg( 'mobile-frontend-footer-sitename' )->text();
+
+		// If there's a custom site logo, use that instead of text
+		if ( isset( $customLogos['copyright'] ) ) {
+			$attributes =  [
+				'src' => $customLogos['copyright'],
+				'alt' => $footerSitename,
+			];
+			if ( isset( $customLogos['copyright-height'] ) ) {
+				$attributes['height'] = $customLogos['copyright-height'];
+			}
+			if ( isset( $customLogos['copyright-width'] ) ) {
+				$attributes['width'] = $customLogos['copyright-width'];
+			}
+			$sitename = Html::element( 'img', $attributes );
+		} else {
+			$sitename = $footerSitename;
+		}
+
+		return $sitename;
+	}
+
+	/** @var array skin specific options */
+	protected $skinOptions = [
+		self::OPTIONS_MOBILE_BETA => false,
+		/**
+		 * Whether the main menu should include a link to
+		 * Special:Preferences of Special:MobileOptions
+		 */
+		self::OPTION_MOBILE_OPTIONS => false,
+		/** Whether a categories button should appear at the bottom of the skin. */
+		self::OPTION_CATEGORIES => false,
+		/** Whether an option to change font size appears in Special:MobileOptions */
+		self::OPTION_FONT_CHANGER => false,
+		/** Whether a back to top button appears at the bottom of the view page */
+		self::OPTION_BACK_TO_TOP => false,
+		/** Whether sections can be collapsed (requires MobileFrontend and MobileFormatter) */
+		self::OPTION_TOGGLING => false,
+		/** Whether print styles should be loaded */
+		self::OPTION_PRINT_STYLES => false,
+	];
+
+	/**
+	 * override an existing option or options with new values
+	 * @param array $options
+	 */
+	public function setSkinOptions( $options ) {
+		$this->skinOptions = array_merge( $this->skinOptions, $options );
+	}
+
+	/**
+	 * Return whether a skin option is truthy
+	 * @param string $key
+	 * @return boolean
+	 */
+	public function getSkinOption( $key ) {
+		return $this->skinOptions[$key];
 	}
 
 	/**
@@ -78,9 +159,6 @@ class SkinMinerva extends SkinTemplate {
 
 		// Set the links for page secondary actions
 		$tpl->set( 'secondary_actions', $this->getSecondaryActions( $tpl ) );
-
-		// FIXME: Remove when header v2 is in stable.
-		$tpl->set( 'headerV2', $this->mobileContext->getConfigVariable( 'MinervaUseHeaderV2' ) );
 
 		// Construct various Minerva-specific interface elements
 		$this->preparePageContent( $tpl );
@@ -183,7 +261,7 @@ class SkinMinerva extends SkinTemplate {
 		$noJsEdit = $this->getMFConfig()->get( 'MFAllowNonJavaScriptEditing' );
 
 		if ( $this->isAllowedPageAction( 'edit' ) ) {
-			$additionalClass = $noJsEdit?' nojs-edit':'';
+			$additionalClass = $noJsEdit ? ' nojs-edit': '';
 			$lang = wfGetLangObj( $lang );
 			$message = $this->msg( 'mobile-frontend-editor-edit' )->inLanguage( $lang )->text();
 			$html = Html::openElement( 'span' );
@@ -220,7 +298,8 @@ class SkinMinerva extends SkinTemplate {
 	 */
 	public function getPageClasses( $title ) {
 		$className = parent::getPageClasses( $title );
-		$className .= ' ' . $this->getMode();
+		$className .= ' ' . ( $this->getSkinOption( self::OPTIONS_MOBILE_BETA ) ? 'beta' : 'stable' );
+
 		if ( $title->isMainPage() ) {
 			$className .= ' page-Main_Page ';
 		} elseif ( $title->isSpecialPage() ) {
@@ -234,14 +313,6 @@ class SkinMinerva extends SkinTemplate {
 	}
 
 	/**
-	 * Get the current mode of the skin [stable|beta] that is running
-	 * @return string
-	 */
-	protected function getMode() {
-		return $this->mode;
-	}
-
-	/**
 	 * Check whether the current user is authenticated or not.
 	 * @todo This helper function is only truly needed whilst SkinMobileApp does not support login
 	 * @return bool
@@ -251,11 +322,15 @@ class SkinMinerva extends SkinTemplate {
 	}
 
 	/**
-	 * Whether the output page contains category links
+	 * Whether the output page contains category links and the category feature is enabled.
 	 * @return bool
 	 */
 	private function hasCategoryLinks() {
+		if ( !$this->getSkinOption( self::OPTION_CATEGORIES ) ) {
+			return false;
+		}
 		$categoryLinks = $this->getOutput()->getCategoryLinks();
+
 		if ( !count( $categoryLinks ) ) {
 			return false;
 		}
@@ -266,8 +341,6 @@ class SkinMinerva extends SkinTemplate {
 	 * Initiate class
 	 */
 	public function __construct() {
-		$this->mobileContext = MobileContext::singleton();
-		$this->isMobileMode = $this->mobileContext->shouldDisplayMobileView();
 		$title = $this->getTitle();
 		if ( $title->inNamespace( NS_USER ) && !$title->isSubpage() ) {
 			$pageUserId = User::idFromName( $title->getText() );
@@ -276,8 +349,6 @@ class SkinMinerva extends SkinTemplate {
 				$this->isUserPage = true;
 			}
 		}
-		$this->shouldShowCategoriesButton = $this->mobileContext->getConfigVariable(
-			'MinervaShowCategoriesButton' ) && $this->hasCategoryLinks();
 	}
 
 	/**
@@ -286,8 +357,12 @@ class SkinMinerva extends SkinTemplate {
 	 */
 	public function initPage( OutputPage $out ) {
 		parent::initPage( $out );
-		$out->addModuleStyles( 'mobile.usermodule.styles' );
-		$out->addModuleScripts( 'mobile.usermodule' );
+		$styles = [];
+		if ( $this->getSkinOption( self::OPTION_PRINT_STYLES ) ) {
+			$styles[] = 'skins.minerva.print.styles';
+		}
+
+		$out->addModuleStyles( $styles );
 		$out->addJsConfigVars( $this->getSkinConfigVariables() );
 	}
 
@@ -297,6 +372,33 @@ class SkinMinerva extends SkinTemplate {
 	 */
 	protected function useEcho() {
 		return class_exists( 'MWEchoNotifUser' );
+	}
+
+	/**
+	 * Get Echo notification target user
+	 * @param User $user
+	 * @return MWEchoNotifUser
+	 */
+	protected function getEchoNotifUser( User $user ) {
+		return MWEchoNotifUser::newFromUser( $user );
+	}
+
+	/**
+	 * Get the last time user has seen Echo notifications
+	 * @param User $user
+	 * @return string|bool Timestamp in TS_ISO_8601 format, or false if no stored time
+	 */
+	protected function getEchoSeenTime( User $user ) {
+		return EchoSeenTime::newFromUser( $user )->getTime( 'all', /*flags*/ 0, TS_ISO_8601 );
+	}
+
+	/**
+	 * Get formatted Echo notification count
+	 * @param int $count
+	 * @return string
+	 */
+	protected function getFormattedEchoNotificationCount( $count ) {
+		return EchoNotificationController::formatNotificationCount( $count );
 	}
 
 	/**
@@ -323,8 +425,8 @@ class SkinMinerva extends SkinTemplate {
 				// Don't show the secondary button at all
 				$notificationsTitle = null;
 			} else {
-				$notifUser = MWEchoNotifUser::newFromUser( $user );
-				$echoSeenTime = EchoSeenTime::newFromUser( $user )->getTime( 'all', /*flags*/ 0, TS_ISO_8601 );
+				$notifUser = $this->getEchoNotifUser( $user );
+				$echoSeenTime = $this->getEchoSeenTime( $user );
 
 				$notificationsMsg = $this->msg( 'mobile-frontend-user-button-tooltip' )->text();
 				$notifLastUnreadTime = $notifUser->getLastUnreadNotificationTime();
@@ -333,10 +435,12 @@ class SkinMinerva extends SkinTemplate {
 				$isZero = $count === 0;
 				$hasUnseen = (
 					$count > 0 &&
+					$echoSeenTime !== false &&
+					$notifLastUnreadTime !== false &&
 					$echoSeenTime < $notifLastUnreadTime->getTimestamp( TS_ISO_8601 )
 				);
 
-				$countLabel = EchoNotificationController::formatNotificationCount( $count );
+				$countLabel = $this->getFormattedEchoNotificationCount( $count );
 			}
 		} elseif ( !empty( $newtalks ) ) {
 			$notificationsTitle = SpecialPage::getTitleFor( 'Mytalk' );
@@ -441,7 +545,7 @@ class SkinMinerva extends SkinTemplate {
 		$returnToTitle = $this->getTitle()->getPrefixedText();
 
 		// Links specifically for mobile mode
-		if ( $this->isMobileMode ) {
+		if ( $this->getSkinOption( self::OPTION_MOBILE_OPTIONS ) ) {
 
 			// Settings link
 			$menu->insert( 'settings' )
@@ -464,7 +568,7 @@ class SkinMinerva extends SkinTemplate {
 						SpecialPage::getTitleFor( 'Preferences' ),
 						'prefsnologintext2'
 					),
-					MobileUI::iconClass( 'mf-settings-invert', 'before' ),
+					MobileUI::iconClass( 'mf-settings', 'before' ),
 					[ 'data-event-name' => 'preferences' ]
 				);
 		}
@@ -588,24 +692,12 @@ class SkinMinerva extends SkinTemplate {
 	}
 
 	/**
-	 * Prepares a url to the Special:UserLogin with query parameters,
-	 * taking into account $wgSecureLogin
+	 * Prepares a url to the Special:UserLogin with query parameters
 	 * @param array $query
 	 * @return string
 	 */
 	public function getLoginUrl( $query ) {
-		if ( $this->isMobileMode ) {
-			// FIXME: Does mobile really need special casing here?
-			$secureLogin = $this->getConfig()->get( 'SecureLogin' );
-
-			if ( WebRequest::detectProtocol() != 'https' && $secureLogin ) {
-				$loginUrl = SpecialPage::getTitleFor( 'Userlogin' )->getFullURL( $query );
-				return $this->mobileContext->getMobileUrl( $loginUrl, $secureLogin );
-			}
-			return SpecialPage::getTitleFor( 'Userlogin' )->getLocalURL( $query );
-		} else {
-			return SpecialPage::getTitleFor( 'Userlogin' )->getFullURL( $query );
-		}
+		return SpecialPage::getTitleFor( 'Userlogin' )->getLocalURL( $query );
 	}
 
 	/**
@@ -615,6 +707,7 @@ class SkinMinerva extends SkinTemplate {
 	 */
 	protected function insertLogInOutMenuItem( MenuBuilder $menu ) {
 		$query = [];
+		$canEdit = $this->getMFConfig()->get( 'MFAllowNonJavaScriptEditing' );
 		if ( !$this->getRequest()->wasPosted() ) {
 			$returntoquery = $this->getRequest()->getValues();
 			unset( $returntoquery['title'] );
@@ -632,11 +725,10 @@ class SkinMinerva extends SkinTemplate {
 			if ( !empty( $returntoquery ) ) {
 				$query[ 'returntoquery' ] = wfArrayToCgi( $returntoquery );
 			}
-			$url = SpecialPage::getTitleFor( 'Userlogout' )->getFullURL( $query );
-			$url = $this->mobileContext->getMobileUrl( $url, $this->getConfig()->get( 'SecureLogin' ) );
+			$url = SpecialPage::getTitleFor( 'Userlogout' )->getLocalURL( $query );
 			$username = $user->getName();
 
-			$menu->insert( 'auth' )
+			$menu->insert( 'auth', $isJSOnly = !$canEdit )
 				->addComponent(
 					$username,
 					Title::newFromText( $username, NS_USER )->getLocalUrl(),
@@ -658,7 +750,7 @@ class SkinMinerva extends SkinTemplate {
 			unset( $returntoquery['campaign'] );
 			$query[ 'returntoquery' ] = wfArrayToCgi( $returntoquery );
 			$url = $this->getLoginUrl( $query );
-			$menu->insert( 'auth', $isJSOnly = true )
+			$menu->insert( 'auth', $isJSOnly = !$canEdit )
 				->addComponent(
 					$this->msg( 'mobile-frontend-main-menu-login' )->escaped(),
 					$url,
@@ -709,12 +801,21 @@ class SkinMinerva extends SkinTemplate {
 	 */
 	protected function getTaglineHtml() {
 		$tagline = false;
+
 		if ( $this->isUserPage ) {
 			$fromDate = $this->pageUser->getRegistration();
 			if ( is_string( $fromDate ) ) {
-				$fromDateTs = new MWTimestamp( wfTimestamp( TS_UNIX, $fromDate ) );
+				$fromDateTs = wfTimestamp( TS_UNIX, $fromDate );
+
+				// This is shown when js is disabled. js enhancement made due to caching
 				$tagline = $this->msg( 'mobile-frontend-user-page-member-since',
-						$fromDateTs->format( 'F, Y' ), $this->pageUser );
+						$this->getLanguage()->userDate( new MWTimestamp( $fromDateTs ), $this->getUser() ),
+						$this->pageUser );
+
+				// Define html attributes for usage with js enhancement (unix timestamp, gender)
+				$attrs = [ 'id' => 'tagline-userpage',
+					'data-userpage-registration-date' => $fromDateTs,
+					'data-userpage-gender' => $this->pageUser->getOption( 'gender' ) ];
 			}
 		} else {
 			$title = $this->getTitle();
@@ -725,8 +826,10 @@ class SkinMinerva extends SkinTemplate {
 				}
 			}
 		}
+
+		$attrs[ 'class' ] = 'tagline';
 		return $tagline ?
-			Html::element( 'div', [ 'class' => 'tagline' ], $tagline ) : '';
+			Html::element( 'div', $attrs, $tagline ) : '';
 	}
 	/**
 	 * Returns the HTML representing the heading.
@@ -791,7 +894,7 @@ class SkinMinerva extends SkinTemplate {
 			}
 		}
 		$tpl->set( 'headinghtml', $this->getHeadingHtml() );
-
+		$tpl->set( 'footer-site-heading-html', $this->getSitename() );
 		// set defaults
 		if ( !isset( $tpl->data['postbodytext'] ) ) {
 			$tpl->set( 'postbodytext', '' ); // not currently set in desktop skin
@@ -944,7 +1047,7 @@ class SkinMinerva extends SkinTemplate {
 			$buttons['language'] = $this->getLanguageButton();
 		}
 
-		if ( $this->shouldShowCategoriesButton ) {
+		if ( $this->hasCategoryLinks() ) {
 			$buttons['categories'] = $this->getCategoryButton();
 		}
 
@@ -1218,15 +1321,15 @@ class SkinMinerva extends SkinTemplate {
 			$modules[] = 'skins.minerva.talk';
 		}
 
-		if ( $this->shouldShowCategoriesButton ) {
+		if ( $this->hasCategoryLinks() ) {
 			$modules[] = 'skins.minerva.categories';
 		}
 
-		if ( $this->mobileContext->getConfigVariable( 'MinervaEnableFontChanger' ) ) {
+		if ( $this->getSkinOption( self::OPTION_FONT_CHANGER ) ) {
 			$modules[] = 'skins.minerva.fontchanger';
 		}
 
-		if ( $this->mobileContext->getConfigVariable( 'MinervaEnableBackToTop' ) ) {
+		if ( $this->getSkinOption( self::OPTION_BACK_TO_TOP ) ) {
 			$modules[] = 'skins.minerva.backtotop';
 		}
 
@@ -1253,7 +1356,7 @@ class SkinMinerva extends SkinTemplate {
 
 		$modules['context'] = $this->getContextSpecificModules();
 
-		if ( $this->isMobileMode ) {
+		if ( $this->getSkinOption( self::OPTION_TOGGLING ) ) {
 			$modules['toggling'] = [ 'skins.minerva.toggling' ];
 		}
 		$modules['site'] = 'mobile.site';
@@ -1299,11 +1402,14 @@ class SkinMinerva extends SkinTemplate {
 			$styles[] = 'skins.minerva.userpage.styles';
 			$styles[] = 'skins.minerva.userpage.icons';
 		} elseif ( $title->isSpecialPage() ) {
-			$styles[] = 'mobile.messageBox';
+			$styles[] = 'mobile.messageBox.styles';
 			$styles['special'] = 'skins.minerva.special.styles';
 		}
+		if ( $title->isSpecial( 'Notifications' ) ) {
+			$styles[] = 'skins.minerva.notifications.filter.styles';
+		}
 		if ( $this->getOutput()->getRequest()->getText( 'oldid' ) ) {
-			$styles[] = 'mobile.messageBox';
+			$styles[] = 'mobile.messageBox.styles';
 		}
 
 		return $styles;

@@ -16,6 +16,11 @@
 		padding: 0.5em;
 	}
 
+	.search-box {
+		// Always show the language search input
+		display: block;
+	}
+
 	.search {
 		box-shadow: none;
 	}
@@ -75,7 +80,7 @@
 	}
 }
 
-@media all and ( min-width: @wgMFDeviceWidthDesktop ) {
+@media screen and ( min-width: @wgMFDeviceWidthDesktop ) {
 	.language-overlay {
 		.overlay-content {
 			margin: 0;

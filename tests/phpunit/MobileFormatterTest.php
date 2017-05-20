@@ -72,8 +72,28 @@ class MobileFormatterTest extends MediaWikiTestCase {
 		$mf->topHeadingTags = [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6' ];
 		$mf->filterContent( $removeDefaults, $lazyLoadReferences, $lazyLoadImages,
 			$showFirstParagraphBeforeInfobox );
+
 		$html = $mf->getText();
 		$this->assertEquals( str_replace( "\n", '', $expected ), str_replace( "\n", '', $html ) );
+	}
+
+	public function testHtmlTransformWhenSkippingLazyLoadingSmallImages() {
+		$smallPic =  '<img src="smallPicture.jpg" style="width: 4.4ex; height:3.34ex;">';
+		$enableSections = function ( MobileFormatter $mf ) {
+			$mf->enableExpandableSections();
+		};
+		$this->setMwGlobals( [
+			'wgMFLazyLoadSkipSmallImages' => true
+		] );
+
+		$this->testHtmlTransform(
+			'<p>text</p><h2>heading 1</h2>' . $smallPic,
+			$this->makeSectionHtml( 0, '<p>text</p>' )
+			. $this->makeSectionHeading( 'h2', 'heading 1' )
+			. $this->makeSectionHtml( 1, $smallPic ),
+			$enableSections,
+			false, false, true
+		);
 	}
 
 	public function provideHtmlTransform() {
@@ -88,14 +108,15 @@ class MobileFormatterTest extends MediaWikiTestCase {
 			$f->setIsMainPage( true );
 		};
 		$citeUrl = SpecialPage::getTitleFor( 'MobileCite', '0' )->getLocalUrl();
-		$imageStyles = '<img src="math.jpg" style="vertical-align: -3.505ex; '
-			. 'width: 24.412ex; height:7.343ex; background:none;">';
+		$lazyLoadedImageStyles = '<img src="bigPicture.jpg" style="vertical-align: -3.505ex; '
+			. 'width: 84.412ex; height:70.343ex; background:none;">';
+
 		$placeholderStyles = '<span class="lazy-image-placeholder" '
-			. 'style="width: 24.412ex;height: 7.343ex;" '
-			. 'data-src="math.jpg">'
+			. 'style="width: 84.412ex;height: 70.343ex;" '
+			. 'data-src="bigPicture.jpg">'
 			. ' '
 			. '</span>';
-		$noscriptStyles = '<noscript>' . $imageStyles . '</noscript>';
+		$noscriptStyles = '<noscript>' . $lazyLoadedImageStyles . '</noscript>';
 		$originalImage = '<img alt="foo" src="foo.jpg" width="100" '
 			. 'height="100" srcset="foo-1.5x.jpg 1.5x, foo-2x.jpg 2x">';
 		$placeholder = '<span class="lazy-image-placeholder" '
@@ -121,6 +142,19 @@ class MobileFormatterTest extends MediaWikiTestCase {
 			. $this->makeSectionHtml( 1, $refplaceholder, true );
 
 		return [
+			// Nested headings are not wrapped
+			[
+				'<div class="wrapper"><p>Text goes here i think 2testestestestest</p>'
+					. '<h2>Heading</h2>I am awesome</div>'
+					. 'Text<h2>test</h2><p>more text</p>',
+				$this->makeSectionHtml( 0,
+					'<div class="wrapper"><p>Text goes here i think 2testestestestest</p>'
+						. '<h2>Heading</h2>I am awesome</div>Text' )
+					. $this->makeSectionHeading( 'h2', 'test' )
+					. $this->makeSectionHtml( 1, '<p>more text</p>' ),
+				$enableSections,
+				false, false, false
+			],
 			// # Lazy loading images
 			// Main page not impacted
 			[
@@ -157,7 +191,7 @@ class MobileFormatterTest extends MediaWikiTestCase {
 			],
 			// Test lazy loading of images with style attributes
 			[
-				'<p>text</p><h2>heading 1</h2><p>text</p>' . $imageStyles
+				'<p>text</p><h2>heading 1</h2><p>text</p>' . $lazyLoadedImageStyles
 					. '<h2>heading 2</h2>abc',
 				$this->makeSectionHtml( 0, '<p>text</p>' )
 					. $this->makeSectionHeading( 'h2', 'heading 1' )
@@ -562,7 +596,20 @@ class MobileFormatterTest extends MediaWikiTestCase {
 
 				$enableSections, false, false, false, true,
 			],
+			[
+				// infobox, a paragraph, list element
+				// @see https://phabricator.wikimedia.org/T149852
+				'<table class="' . self::INFOBOX_CLASSNAME . '"><tr><td>infobox</td></tr></table>' .
+				'<p>paragraph</p>' .
+				'<ol><li>item 1</li><li>item 2</li></ol>',
 
+				$this->makeSectionHtml(
+					0,
+					'<p>paragraph</p><ol><li>item 1</li><li>item 2</li></ol>' .
+					'<table class="' . self::INFOBOX_CLASSNAME . '"><tr><td>infobox</td></tr></table>'
+				),
+				$enableSections, false, false, false, true,
+			],
 			[
 				// 2 hat-notes, ambox, 2 infoboxes, 2 paragraphs, another section
 				'<div class="' . self::HATNOTE_CLASSNAME . '">hatnote</div>' .
@@ -572,6 +619,7 @@ class MobileFormatterTest extends MediaWikiTestCase {
 				'<table class="' . self::INFOBOX_CLASSNAME . '"><tr><td>infobox 2</td></tr></table>' .
 				'<p>paragraph 1</p>' .
 				'<p>paragraph 2</p>' .
+				'<ul><li>item</li></ul>'.
 				'<h2>Heading 1</h2>' .
 				'<p>paragraph 3</p>',
 
@@ -583,7 +631,7 @@ class MobileFormatterTest extends MediaWikiTestCase {
 					'<p>paragraph 1</p>' .
 					'<table class="' . self::INFOBOX_CLASSNAME . '"><tr><td>infobox 1</td></tr></table>' .
 					'<table class="' . self::INFOBOX_CLASSNAME . '"><tr><td>infobox 2</td></tr></table>' .
-					'<p>paragraph 2</p>'
+					'<p>paragraph 2</p><ul><li>item</li></ul>'
 				) .
 				$this->makeSectionHeading( 'h2', 'Heading 1' ) .
 				$this->makeSectionHtml(
@@ -796,6 +844,34 @@ class MobileFormatterTest extends MediaWikiTestCase {
 		];
 	}
 
+	/**
+	 * @dataProvider provideIsDimensionSmallerThanThreshold
+	 * @covers MobileFormatter::isDimensionSmallerThanThreshold
+	 */
+	public function testIsDimensionSmallerThanThreshold( $dimension, $expected ) {
+		$mf = new MobileFormatter( '', Title::newFromText( 'Test' ) );
+		$this->assertEquals( $expected, $mf->isDimensionSmallerThanThreshold( $dimension ) );
+	}
+
+	/**
+	 * @see https://phabricator.wikimedia.org/T162623
+	 */
+	public function provideIsDimensionSmallerThanThreshold() {
+		return [
+			[ '40px', true ],
+			[ '50px', true ],
+			[ '57px', false ],
+			[ '100ox', false ],
+			[ '10', false ],
+			[ '5.12ex', true ],
+			[ '9.89ex', true ],
+			[ '15.1ex', false ],
+			[ '10in', false ],
+			[ 'big', false ],
+			[ '', false ]
+		];
+	}
+
 	public function testInsertTOCPlaceholder() {
 		$input = '<p>Hello world.</p><h2>Heading</h2>Text.';
 		$mf = new MobileFormatter( $input, Title::newFromText( 'Mobile' ) );
@@ -816,5 +892,129 @@ class MobileFormatterTest extends MediaWikiTestCase {
 		$input = '<p>Hello, world!</p><h2>Section heading</h2><ol class="references"></ol>';
 		$formatter = new MobileFormatter( $input, Title::newFromText( 'Special:Foo' ) );
 		$formatter->filterContent( false, true, false );
+	}
+
+	/**
+	 * @see https://phabricator.wikimedia.org/T149884
+	 * @dataProvider provideLoggingOfInfoboxesBeingWrappedInContainersWhenWrapped
+	 * @covers MobileFormatter::filterContent
+	 * @param string $input
+	 */
+	public function testLoggingOfInfoboxesBeingWrappedInContainersWhenWrapped( $input ) {
+		$this->setMwGlobals( [
+			'wgMFLogWrappedInfoboxes' => true
+		] );
+		$title = 'T149884';
+		$formatter = new MobileFormatter( MobileFormatter::wrapHTML( $input ),
+			Title::newFromText( $title, NS_MAIN ) );
+		$formatter->enableExpandableSections();
+
+		$loggerMock = $this->getMock( \Psr\Log\LoggerInterface::class );
+		$loggerMock->expects( $this->once() )
+			->method( 'info' )
+			->will( $this->returnCallback( function( $message ) use ( $title ) {
+				// Debug message contains Page title
+				$this->assertContains( $title, $message );
+				// and contains revision id which is 0 by default
+				$this->assertContains( '0', $message );
+			} ) );
+
+		$this->setLogger( 'mobile', $loggerMock );
+		$formatter->filterContent( false, false, false, true );
+	}
+
+	public function provideLoggingOfInfoboxesBeingWrappedInContainersWhenWrapped() {
+		$box = $this->buildInfoboxHTML( 'infobox' );
+		return [
+			// wrapped once
+			[ "<div>$box</div>" ],
+			// wrapped twice
+			[ "<div><p>$box</p></div>" ],
+			// wrapped multiple times
+			[ "<div><div><p><span><div><p>Test</p>$box</div></span></p></div></div>" ]
+		];
+	}
+
+	/**
+	 * @see https://phabricator.wikimedia.org/T149884
+	 * @covers MobileFormatter::filterContent
+	 */
+	public function testLoggingOfInfoboxesBeingWrappedInContainersWhenNotWrapped() {
+		$this->setMwGlobals( [
+			'wgMFLogWrappedInfoboxes' => true
+		] );
+		$input = $this->buildInfoboxHTML( 'infobox ' );
+		$title = 'T149884';
+
+		$formatter = new MobileFormatter( MobileFormatter::wrapHTML( $input ),
+			Title::newFromText( $title ) );
+		$formatter->enableExpandableSections();
+
+		$loggerMock = $this->getMock( \Psr\Log\LoggerInterface::class );
+		$loggerMock->expects( $this->never() )
+			->method( 'info' );
+
+		$this->setLogger( 'mobile', $loggerMock );
+		$formatter->filterContent( false, false, false, true );
+	}
+
+	/**
+	 * @see https://phabricator.wikimedia.org/T163805
+	 * @covers MobileFormatter::filterContent
+	 */
+	public function testLoggingOfInfoboxesLogsOnlyMainNamespace() {
+		$this->setMwGlobals( [
+			'wgMFLogWrappedInfoboxes' => true
+		] );
+
+		$input = '<div>'. $this->buildInfoboxHTML( 'test' ).'</div>';
+		$title = 'Special:T163805';
+
+		$formatter = new MobileFormatter( MobileFormatter::wrapHTML( $input ),
+			Title::newFromText( $title,  NS_SPECIAL ) );
+		$formatter->enableExpandableSections();
+
+		$loggerMock = $this->getMock( \Psr\Log\LoggerInterface::class );
+		$loggerMock->expects( $this->never() )
+			->method( 'info' );
+
+		$this->setLogger( 'mobile', $loggerMock );
+		$formatter->filterContent( false, false, false, true );
+	}
+
+	/**
+	 * @see https://phabricator.wikimedia.org/T163805
+	 * @covers MobileFormatter::filterContent
+	 */
+	public function testLoggingOfInfoboxesSkipsInfoBoxInsideInfobox() {
+		$this->setMwGlobals( [
+			'wgMFLogWrappedInfoboxes' => true
+		] );
+
+		// wrapped inside different infobox
+		$input = $this->buildInfoboxHTML( $this->buildInfoboxHTML( 'test' ) );
+		$title = 'T163805';
+
+		$formatter = new MobileFormatter( MobileFormatter::wrapHTML( $input ),
+			Title::newFromText( $title, NS_MAIN ) );
+		$formatter->enableExpandableSections();
+
+		$loggerMock = $this->getMock( \Psr\Log\LoggerInterface::class );
+		$loggerMock->expects( $this->never() )
+			->method( 'info' );
+
+		$this->setLogger( 'mobile', $loggerMock );
+		$formatter->filterContent( false, false, false, true );
+	}
+
+	/**
+	 * Helper function to create an infobox with given content
+	 *
+	 * @param string $content
+	 * @return string built HTML
+	 */
+	private function buildInfoboxHTML( $content ) {
+		return "<table class=\"" . self::INFOBOX_CLASSNAME . "\"><tr><td>" .
+			$content . "</td></tr></table>";
 	}
 }

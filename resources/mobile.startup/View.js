@@ -51,8 +51,8 @@
 	 * Inspired from Backbone.js
 	 * https://github.com/jashkenas/backbone/blob/master/backbone.js#L1128
 	 *
-	 *     @example
-	 *     <code>
+	 * Example:
+	 *
 	 *     var MyComponent = View.extend( {
 	 *       events: {
 	 *	       'mousedown .title': 'edit',
@@ -66,13 +66,9 @@
 	 *         //...
 	 *       }
 	 *     } );
-	 *     </code>
 	 *
-	 * @class View
-	 * @mixins OO.EventEmitter
 	 * Example:
-	 *     @example
-	 *     <pre>
+	 *
 	 *     var View, section;
 	 *     function Section( options ) {
 	 *       View.call( this, options );
@@ -83,7 +79,9 @@
 	 *     } );
 	 *     section = new Section( { title: 'Test', text: 'Test section body' } );
 	 *     section.appendTo( 'body' );
-	 *     </pre>
+	 *
+	 * @class View
+	 * @mixins OO.EventEmitter
 	 */
 	function View() {
 		this.initialize.apply( this, arguments );
@@ -337,7 +335,7 @@
 		}
 	} );
 
-	$.each( [
+	[
 		'append',
 		'prepend',
 		'appendTo',
@@ -348,7 +346,7 @@
 		'insertBefore',
 		'remove',
 		'detach'
-	], function ( i, prop ) {
+	].forEach( function ( prop ) {
 		View.prototype[prop] = function () {
 			this.$el[prop].apply( this.$el, arguments );
 			return this;

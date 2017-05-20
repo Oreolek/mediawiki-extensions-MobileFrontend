@@ -13,6 +13,9 @@ use MediaWiki\MediaWikiServices;
  *	on<HookName>()
  * For intance, the hook handler for the 'RequestContextCreateSkin' would be called:
  *	onRequestContextCreateSkin()
+ *
+ * If you're hook changes the behaviour of the Minerva skin you are in the wrong place.
+ * Any changes relating to Minerva should go into Minerva.hooks.php
  */
 class MobileFrontendHooks {
 
@@ -46,11 +49,6 @@ class MobileFrontendHooks {
 		MobileContext $mobileContext
 	) {
 		$skinName = $mobileContext->getMFConfig()->get( 'MFDefaultSkinClass' );
-		$betaSkinName = $skinName . 'Beta';
-		// Force beta for test mode to sure all modules can run
-		if ( $mobileContext->isBetaGroupMember() && class_exists( $betaSkinName ) ) {
-			$skinName = $betaSkinName;
-		}
 		$skin = new $skinName( $context );
 		return $skin;
 	}
@@ -117,6 +115,7 @@ class MobileFrontendHooks {
 			}
 		}
 		$skin = self::getDefaultMobileSkin( $context, $mobileContext );
+		Hooks::run( 'RequestContextCreateSkinMobile', [ $mobileContext, $skin ] );
 
 		return false;
 	}
@@ -183,8 +182,6 @@ class MobileFrontendHooks {
 	 * @return bool
 	 */
 	public static function onOutputPageBeforeHTML( &$out, &$text ) {
-		global $wgRelatedArticlesFooterBlacklistedSkins;
-
 		$context = MobileContext::singleton();
 		$title = $context->getTitle();
 
@@ -195,21 +192,6 @@ class MobileFrontendHooks {
 		// Perform a few extra changes if we are in mobile mode
 		if ( $context->shouldDisplayMobileView() ) {
 			$text = ExtMobileFrontend::DOMParse( $out, $text );
-		}
-
-		// FIXME: remove the following when RelatedArticles are promoted from beta to stable
-		// Configure related articles to be shown in the footer for the beta mode
-		// The reason this code is here rather than inside the 'BeforePageDisplay' hook is
-		// that we want to execute this code before RelatedArticles decides not to show
-		// related articles if the skin is blacklisted.
-		if (
-			ExtensionRegistry::getInstance()->isLoaded( 'RelatedArticles' ) &&
-			MobileContext::singleton()->isBetaGroupMember()
-		) {
-			$needle = array_search( 'minerva', $wgRelatedArticlesFooterBlacklistedSkins ?: [] );
-			if ( $needle !== false ) {
-				array_splice( $wgRelatedArticlesFooterBlacklistedSkins, $needle, 1 );
-			}
 		}
 
 		if ( $context->shouldDisplayMobileView() && !$title->isMainPage() && !$title->isSpecialPage() ) {
@@ -438,7 +420,6 @@ class MobileFrontendHooks {
 			'wgMFLicense' => MobileFrontendSkinHooks::getLicense( 'editor' ),
 			'wgMFSchemaEditSampleRate' => $config->get( 'MFSchemaEditSampleRate' ),
 			'wgMFExperiments' => $config->get( 'MFExperiments' ),
-			'wgMFIgnoreEventLoggingBucketing' => $config->get( 'MFIgnoreEventLoggingBucketing' ),
 			'wgMFEnableJSConsoleRecruitment' => $config->get( 'MFEnableJSConsoleRecruitment' ),
 			'wgMFPhotoUploadEndpoint' =>
 				$config->get( 'MFPhotoUploadEndpoint' ) ? $config->get( 'MFPhotoUploadEndpoint' ) : '',
@@ -448,11 +429,6 @@ class MobileFrontendHooks {
 
 		if ( $context->shouldDisplayMobileView() ) {
 			$vars['wgImagesDisabled'] = $context->imagesDisabled();
-		}
-		// add CodeMirror specific things, if it is installed (for CodeMirror editor)
-		if ( class_exists( 'CodeMirrorHooks' ) ) {
-			$vars += CodeMirrorHooks::getGlobalVariables( MobileContext::singleton() );
-			$vars['wgMFCodeMirror'] = true;
 		}
 
 		return true;
@@ -588,40 +564,11 @@ class MobileFrontendHooks {
 	 * @return bool
 	 */
 	public static function onSpecialPageBeforeExecute( SpecialPage $special, $subpage ) {
-		$mobileContext = MobileContext::singleton();
-		$isMobileView = $mobileContext->shouldDisplayMobileView();
-		$context = $special->getContext();
-		$out = $context->getOutput();
-		$request = $special->getContext()->getRequest();
-		$skin = $out->getSkin()->getSkinName();
-
+		$isMobileView = MobileContext::singleton()->shouldDisplayMobileView();
 		$name = $special->getName();
 
-		// Ensure desktop version of Special:Preferences page gets mobile targeted modules
-		// FIXME: Upstream to core (?)
-		if ( $skin === 'minerva' ) {
-			if ( $name === 'Preferences' ) {
-				$out->addModules( 'skins.minerva.special.preferences.scripts' );
-			}
-
-			// Add default warning message to Special:UserLogin and Special:UserCreate
-			// if no warning message set.
-			if (
-				( $name === 'Userlogin' || $name === 'CreateAccount' ) &&
-				!$request->getVal( 'warning', null ) &&
-				!$context->getUser()->isLoggedIn()
-			) {
-				$request->setVal( 'warning', 'mobile-frontend-generic-login-new' );
-			}
-		}
-
-		if ( $isMobileView ) {
-			if ( $name === 'Search' ) {
-				$out->addModuleStyles( 'skins.minerva.special.search.styles' );
-			} elseif ( $name === 'Userlogin' || $name === 'CreateAccount' ) {
-				$out->addModuleStyles( [ 'mobile.ajax', 'skins.minerva.special.userlogin.styles' ] );
-				$out->addModules( 'mobile.special.userlogin.scripts' );
-			}
+		if ( $isMobileView && ( $name === 'Userlogin' || $name === 'CreateAccount' ) ) {
+			$special->getOutput()->addModules( 'mobile.special.userlogin.scripts' );
 		}
 
 		return true;
@@ -720,7 +667,6 @@ class MobileFrontendHooks {
 	 * @return bool
 	 */
 	public static function onBeforePageDisplay( &$out, &$sk ) {
-		global $wgWPBSkinBlacklist, $wgWPBEnableDefaultBanner;
 		$context = MobileContext::singleton();
 		$config = $context->getMFConfig();
 		$mfEnableXAnalyticsLogging = $config->get( 'MFEnableXAnalyticsLogging' );
@@ -730,20 +676,6 @@ class MobileFrontendHooks {
 		$mfMobileUrlTemplate = $context->getMobileUrlTemplate();
 		$lessVars = $config->get( 'ResourceLoaderLESSVars' );
 		$noJsEditing = $config->get( 'MFAllowNonJavaScriptEditing' );
-
-		// show banners using WikidataPageBanner, if installed and all pre-conditions fulfilled
-		if (
-			ExtensionRegistry::getInstance()->isLoaded( 'WikidataPageBanner' ) &&
-			$context->isBetaGroupMember()
-		) {
-			// turn default banners on
-			$wgWPBEnableDefaultBanner = true;
-			// Turn on the banner experiment
-			$needle = array_search( 'minerva', $wgWPBSkinBlacklist );
-			if ( $needle !== false ) {
-				unset( $wgWPBSkinBlacklist[$needle] );
-			}
-		}
 
 		$title = $sk->getTitle();
 		$request = $context->getRequest();
@@ -840,7 +772,7 @@ class MobileFrontendHooks {
 			$requestAction = $out->getRequest()->getVal( 'action' );
 			if ( $noJsEditing && ( $requestAction === 'edit' || $requestAction === 'submit' ) ) {
 				$out->addModuleStyles( [
-					'skins.minerva.fallbackeditor', 'mobile.messageBox'
+					'mobile.fallbackeditor.styles', 'mobile.messageBox'
 				] );
 			}
 		}
@@ -892,23 +824,6 @@ class MobileFrontendHooks {
 	}
 
 	/**
-	 * Check whether Minerva has been enabled as a desktop skin via the Minerva
-	 * beta feature.
-	 *
-	 * @param User $user
-	 *
-	 * @return bool
-	 */
-	private static function hasEnabledMinervaBetaFeature( $user ) {
-		$config = MobileContext::singleton()->getMFConfig();
-		$mfEnableMinervaBetaFeature = $config->get( 'MFEnableMinervaBetaFeature' );
-		$canEnableMinervaFeature = class_exists( 'BetaFeatures' ) && $mfEnableMinervaBetaFeature;
-
-		return $canEnableMinervaFeature &&
-			BetaFeatures::isFeatureEnabled( $user, 'betafeatures-minerva' );
-	}
-
-	/**
 	 * GetPreferences hook handler
 	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/GetPreferences
 	 *
@@ -929,7 +844,8 @@ class MobileFrontendHooks {
 
 		// Remove the Minerva skin from the preferences unless Minerva has been enabled in
 		// BetaFeatures provided that the user has not set it as the default skin.
-		if ( $defaultSkin !== 'minerva' && !self::hasEnabledMinervaBetaFeature( $user ) ) {
+		// FIXME: This can be removed when Minerva lives in its own repository.
+		if ( $defaultSkin !== 'minerva' ) {
 			// Preference key/values are backwards. The value is the name of the skin. The
 			// key is the text+links to display.
 			if ( !empty( $preferences['skin']['options'] ) ) {
@@ -943,37 +859,6 @@ class MobileFrontendHooks {
 			'type' => 'api',
 			'default' => '',
 		];
-
-		return true;
-	}
-
-	/**
-	 * GetBetaFeaturePreferences hook handler
-	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/GetPreferences
-	 *
-	 * @param User $user
-	 * @param array $preferences
-	 *
-	 * @return bool
-	 */
-	public static function onGetBetaFeaturePreferences( $user, &$preferences ) {
-		$context = MobileContext::singleton();
-		$extensionAssetsPath = $context->getConfig()->get( 'ExtensionAssetsPath' );
-		$mfEnableMinervaBetaFeature = $context->getMFConfig()->get( 'MFEnableMinervaBetaFeature' );
-
-		if ( $mfEnableMinervaBetaFeature ) {
-			// Enable the mobile skin on desktop
-			$preferences['betafeatures-minerva'] = [
-				'label-message' => 'beta-feature-minerva',
-				'desc-message' => 'beta-feature-minerva-description',
-				'info-link' => '//www.mediawiki.org/wiki/Beta_Features/Minerva',
-				'discussion-link' => '//www.mediawiki.org/wiki/Talk:Beta_Features/Minerva',
-				'screenshot' => [
-					'ltr' => "$extensionAssetsPath/MobileFrontend/images/BetaFeatures/minerva-ltr.svg",
-					'rtl' => "$extensionAssetsPath/MobileFrontend/images/BetaFeatures/minerva-rtl.svg",
-				],
-			];
-		}
 
 		return true;
 	}
@@ -1079,7 +964,7 @@ class MobileFrontendHooks {
 		}
 
 		// add Echo, if it's installed
-		if ( class_exists( 'MWEchoNotifUser' ) ) {
+		if ( ExtensionRegistry::getInstance()->isLoaded( 'Echo' ) ) {
 			$resourceLoader->register( [
 				'skins.minerva.notifications' => $resourceBoilerplate + [
 					'dependencies' => [
@@ -1112,6 +997,28 @@ class MobileFrontendHooks {
 						'notifications',
 						'echo-overlay-link',
 						'echo-mark-all-as-read-confirmation',
+					],
+					'targets' => [ 'mobile', 'desktop' ],
+				],
+				'skins.minerva.notifications.filter.styles' => $resourceBoilerplate + [
+					'styles' => [
+						'resources/skins.minerva.notifications.filter.styles/SpecialNotificationsOverlay.less',
+					],
+					'targets' => [ 'mobile', 'desktop' ],
+				],
+				'mobile.notifications.filter.overlay' => $resourceBoilerplate + [
+					'dependencies' => [
+						'mobile.startup',
+						'ext.echo.ui',
+					],
+					'scripts' => [
+						'resources/mobile.notifications.filter.overlay/NotificationsFilterOverlay.js',
+					],
+					'styles' => [
+						'resources/mobile.notifications.filter.overlay/NotificationsFilterOverlay.less',
+					],
+					'messages' => [
+						'mobile-frontend-notifications-filter-title',
 					],
 					'targets' => [ 'mobile', 'desktop' ],
 				],

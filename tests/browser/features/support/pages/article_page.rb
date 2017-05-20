@@ -31,6 +31,8 @@ class ArticlePage
   end
   li(:upload_page_action, id: 'ca-upload')
 
+  div(:signup_edit_tutorial, class: 'pointer-overlay-tutorial')
+
   a(:edit_link, text: 'Edit')
   div(:anon_editor_warning, css: '.anon-msg')
   div(:editor_overlay, class: 'editor-overlay')
@@ -58,7 +60,7 @@ class ArticlePage
   button(:watch_confirm, class: 'mw-htmlform-submit')
 
   # search
-  button(:search_icon, css: '#searchIcon input')
+  button(:search_icon, css: '#searchIcon')
   p(:search_within_pages, css: '.without-results')
   text_field(:search_box_placeholder, name: 'search', index: 0)
   text_field(:search_box2, name: 'search', index: 1)
@@ -78,7 +80,7 @@ class ArticlePage
     page.search_overlay_page_list_element.element.h3
   end
 
-  a(:notifications_button, id: 'secondary-button', class: 'user-button')
+  a(:notifications_button, css: '.user-button')
   div(:notifications_overlay, class: 'notifications-overlay')
   button(:notifications_overlay_close_button) do |page|
     page.notifications_overlay_element.button_element(class: 'cancel')
@@ -90,6 +92,7 @@ class ArticlePage
   # page-actions
   ul(:page_actions, id: 'page-actions')
   a(:talk, css: '.talk')
+  a(:category, css: '.category-button')
   a(:nearby_button, css: '#page-secondary-actions .nearby')
 
   # wikidata descriptions
@@ -118,6 +121,9 @@ class ArticlePage
     page.overlay_element.button_element(class: 'cancel')
   end
   h2(:overlay_heading, css: '.overlay-title h2')
+
+  # category
+  li(:overlay_category_topic_item, css: '.topic-title-list li')
 
   # visual editor
   div(:overlay_ve, css: '.editor-overlay-ve')
@@ -183,4 +189,9 @@ class ArticlePage
 
   # talk overlay
   a(:talkadd, css: '.add.continue')
+  p(:talk_overlay_content_header, css: '.talk-overlay .content-header')
+  li(:talk_overlay_first_topic_title, css: '.talk-overlay .topic-title-list li:first-child')
+  text_field(:talk_overlay_summary, css: '.talk-overlay .summary')
+  text_area(:talk_overlay_wikitext_editor, css: '.talk-overlay .wikitext-editor')
+  button(:talk_overlay_save_button, css: '.talk-overlay .confirm-save')
 end

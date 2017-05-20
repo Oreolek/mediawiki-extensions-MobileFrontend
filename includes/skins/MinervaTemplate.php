@@ -67,7 +67,9 @@ class MinervaTemplate extends BaseTemplate {
 		return [
 			'lastmodified' => $this->getHistoryLinkHtml( $data ),
 			'headinghtml' => $data['footer-site-heading-html'],
-			'licensehtml' => $data['mobile-license'],
+			// Note mobile-license is only available on the mobile skin. It is outputted as part of
+			// footer-info on desktop hence the conditional check.
+			'licensehtml' => isset( $data['mobile-license'] ) ? $data['mobile-license'] : '',
 			'lists' => $groups,
 		];
 	}
@@ -274,11 +276,15 @@ class MinervaTemplate extends BaseTemplate {
 			'headelement' => $data[ 'headelement' ],
 			'menuButton' => $data['menuButton'],
 			'headinghtml' => $data['footer-site-heading-html'],
-			'searchButton' => Html::rawElement( 'a', [
-				'href' => SpecialPage::getTitleFor( 'Search' )->getLocalURL(),
+			// A button when clicked will submit the form
+			// This is used so that on tablet devices with JS disabled the search button
+			// passes the value of input to the search
+			// We avoid using input[type=submit] as these cannot be easily styled as mediawiki ui icons
+			// which is problematic in Opera Mini (see T140490)
+			'searchButton' => Html::rawElement( 'button', [
 				'id' => 'searchIcon',
 				'class' => MobileUI::iconClass( 'magnifying-glass', 'element' ),
-			], $input ),
+			], wfMessage( 'searchbutton' ) ),
 			'secondaryButtonData' => $data['secondaryButtonData'],
 			'mainmenuhtml' => $this->getMainMenuHtml( $data ),
 			'contenthtml' => $this->getContentWrapperHtml( $data ),

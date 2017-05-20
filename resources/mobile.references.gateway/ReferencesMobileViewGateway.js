@@ -2,6 +2,7 @@
 	var ReferencesHtmlScraperGateway =
 		M.require( 'mobile.references.gateway/ReferencesHtmlScraperGateway' ),
 		cache = M.require( 'mobile.startup/cache' ),
+		ReferencesGateway = M.require( 'mobile.references.gateway/ReferencesGateway' ),
 		MemoryCache = cache.MemoryCache,
 		NoCache = cache.NoCache,
 		referencesMobileViewGateway = null;
@@ -42,13 +43,14 @@
 		 */
 		getReferencesLists: function ( page ) {
 			var self = this,
+				result = $.Deferred(),
 				cachedReferencesSections = this.cache.get( page.id );
 
 			if ( cachedReferencesSections ) {
-				return $.Deferred().resolve( cachedReferencesSections ).promise();
+				return result.resolve( cachedReferencesSections ).promise();
 			}
 
-			return this.api.get( {
+			this.api.get( {
 				action: 'mobileview',
 				page: page.getTitle(),
 				sections: 'references',
@@ -57,7 +59,7 @@
 			} ).then( function ( data ) {
 				var sections = {};
 
-				$.each( data.mobileview.sections, function ( i, section ) {
+				data.mobileview.sections.forEach( function ( section ) {
 					var $section = $( '<div>' ).html( section.text );
 
 					sections[ $section.find( '.mw-headline' ).attr( 'id' ) ] = $section.find( '.references' );
@@ -65,8 +67,12 @@
 
 				self.cache.set( page.id, sections );
 
-				return sections;
+				result.resolve( sections );
+			} ).fail( function () {
+				result.reject( ReferencesGateway.ERROR_OTHER );
 			} );
+
+			return result.promise();
 		},
 		/**
 		 * Retrieve all the references lists for a given page and section ID.
@@ -91,8 +97,8 @@
 			return this.getReferencesLists( page ).then( function ( sections ) {
 				var $container = $( '<div>' );
 
-				$.each( sections, function ( i, section ) {
-					$container.append( section );
+				Object.keys( sections ).forEach( function ( sectionId ) {
+					$container.append( sections[ sectionId ] );
 				} );
 
 				return self.getReferenceFromContainer( id, $container );
