@@ -1,8 +1,7 @@
-( function ( M, $ ) {
-	var context = M.require( 'mobile.startup/context' ),
-		settings = M.require( 'mobile.startup/settings' ),
-		browser = M.require( 'mobile.startup/Browser' ).getSingleton(),
-		escapeHash = M.require( 'mobile.startup/util' ).escapeHash,
+( function ( M ) {
+	var browser = M.require( 'mobile.startup/Browser' ).getSingleton(),
+		util = M.require( 'mobile.startup/util' ),
+		escapeHash = util.escapeHash,
 		arrowOptions = {
 			name: 'arrow',
 			additionalClassNames: 'indicator'
@@ -32,7 +31,7 @@
 	 */
 	function getExpandedSections( page ) {
 		var expandedSections = JSON.parse(
-			settings.get( 'expandedSections', false ) || '{}'
+			mw.storage.get( 'expandedSections' ) || '{}'
 		);
 		expandedSections[page.title] = expandedSections[page.title] || {};
 		return expandedSections;
@@ -44,8 +43,8 @@
 	 * Save expandedSections to localStorage
 	 */
 	function saveExpandedSections( expandedSections ) {
-		settings.save(
-			'expandedSections', JSON.stringify( expandedSections ), false
+		mw.storage.set(
+			'expandedSections', JSON.stringify( expandedSections )
 		);
 	}
 
@@ -86,7 +85,7 @@
 			$headlines = $container.find( '.section-heading span' );
 
 		$headlines.each( function () {
-			$headline = $( this );
+			$headline = $container.find( this );
 			$sectionHeading = $headline.parents( '.section-heading' );
 			// toggle only if the section is not already expanded
 			if (
@@ -143,6 +142,7 @@
 		 * @event toggled
 		 */
 		this.emit( 'toggled', wasExpanded, sectionNumber );
+		arrowOptions.rotation = wasExpanded ? 0 : 180;
 		indicator = new Icon( arrowOptions ).prependTo( $heading );
 		$heading.data( 'indicator', indicator );
 
@@ -184,7 +184,7 @@
 		$heading.on( 'keypress', function ( ev ) {
 			if ( ev.which === 13 || ev.which === 32 ) {
 				// Only handle keypresses on the "Enter" or "Space" keys
-				toggler.toggle( $( this ) );
+				toggler.toggle( $heading );
 			}
 		} ).find( 'a' ).on( 'keypress mouseup', function ( ev ) {
 			ev.stopPropagation();
@@ -233,6 +233,7 @@
 	Toggler.prototype._enable = function ( $container, prefix, page, isClosed ) {
 		var tagName, expandSections, indicator, $content,
 			$firstHeading,
+			$link,
 			self = this,
 			collapseSectionsByDefault = mw.config.get( 'wgMFCollapseSectionsByDefault' );
 
@@ -246,11 +247,11 @@
 			collapseSectionsByDefault = true;
 		}
 		expandSections = !collapseSectionsByDefault ||
-			( context.isBetaGroupMember() && settings.get( 'expandSections', true ) === 'true' );
+			( mw.config.get( 'wgMFExpandAllSectionsUserOption' ) && mw.storage.get( 'expandSections' ) === 'true' );
 
 		$container.children( tagName ).each( function ( i ) {
 			var isReferenceSection,
-				$heading = $( this ),
+				$heading = $container.find( this ),
 				$indicator = $heading.find( '.indicator' ),
 				id = prefix + 'collapsible-block-' + i;
 			// Be sure there is a div wrapping the section content.
@@ -272,10 +273,11 @@
 						if ( !ev.target.href ) {
 							// prevent taps/clicks on edit button after toggling (bug 56209)
 							ev.preventDefault();
-							self.toggle( $( this ) );
+							self.toggle( $heading );
 						}
 					} );
 
+				arrowOptions.rotation = expandSections ? 180 : 0;
 				indicator = new Icon( arrowOptions );
 				if ( $indicator.length ) {
 					// replace the existing indicator
@@ -298,12 +300,15 @@
 
 				enableKeyboardActions( self, $heading );
 				if ( !isReferenceSection && ( !isClosed && browser.isWideScreen() || expandSections ) ) {
-					// Expand sections by default on wide screen devices or if the expand sections setting is set
+					// Expand sections by default on wide screen devices or if the expand sections setting is
+					// set. The wide screen logic for determining whether to collapse sections initially
+					// should be kept in sync with mobileoptions#initLocalStorageElements().
 					self.toggle( $heading );
 				}
 			}
 		} );
 
+		/* eslint-disable no-restricted-properties */
 		/**
 		 * Checks the existing hash and toggles open any section that contains the fragment.
 		 *
@@ -333,21 +338,27 @@
 				self.reveal( internalRedirectHash, $container );
 			}
 		}
+		/* eslint-enable no-restricted-properties */
 
 		checkInternalRedirectAndHash();
-		checkHash( this );
+		checkHash();
 		// Restricted to links created by editors and thus outside our control
-		$container.find( 'a' ).on( 'click', function () {
+		// T166544 - don't do this for reference links - they will be handled elsewhere
+		$link = $container.find( 'a:not(.reference a)' );
+		$link.on( 'click', function () {
 			// the link might be an internal link with a hash.
 			// if it is check if we need to reveal any sections.
-			if ( $( this ).attr( 'href' ) !== undefined &&
-				$( this ).attr( 'href' ).indexOf( '#' ) > -1
+			if ( $link.attr( 'href' ) !== undefined &&
+				$link.attr( 'href' ).indexOf( '#' ) > -1
 			) {
-				checkHash( this );
+				checkHash();
 			}
 		} );
+		util.getWindow().on( 'hashchange', function () {
+			checkHash();
+		} );
 
-		if ( !browser.isWideScreen() ) {
+		if ( !browser.isWideScreen() && page ) {
 			expandStoredSections( this, $container, page );
 			cleanObsoleteStoredSections( page );
 		}
@@ -357,6 +368,6 @@
 	Toggler._expandStoredSections = expandStoredSections;
 	Toggler._cleanObsoleteStoredSections = cleanObsoleteStoredSections;
 
-	M.define( 'mobile.toggle/Toggler', Toggler );
+	M.define( 'mobile.toggle/Toggler', Toggler ); // resource-modules-disable-line
 
-}( mw.mobileFrontend, jQuery ) );
+}( mw.mobileFrontend ) );

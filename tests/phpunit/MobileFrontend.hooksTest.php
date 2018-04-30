@@ -12,20 +12,83 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 	}
 
 	/**
+	 * Test findTagLine when output has no wikibase elements
+	 *
+	 * @covers MobileFrontendHooks::findTagline
+	 */
+	public function testFindTaglineWhenNoElementsPresent() {
+		$po = new ParserOutput();
+		$fallback = function () {
+			$this->fail( 'Fallback shouldn\'t be called' );
+		};
+		$this->assertEquals( MobileFrontendHooks::findTagline( $po, $fallback ), false );
+	}
+
+	/**
+	 * Test findTagLine when output has no wikibase elements
+	 *
+	 * @covers MobileFrontendHooks::findTagline
+	 */
+	public function testFindTaglineWhenItemIsNotPresent() {
+		$poWithDesc = new ParserOutput();
+		$poWithDesc->setProperty( 'wikibase-shortdesc', 'desc' );
+
+		$fallback = function () {
+			$this->fail( 'Fallback shouldn\'t be called' );
+		};
+		$this->assertEquals( MobileFrontendHooks::findTagline( $poWithDesc, $fallback ), 'desc' );
+	}
+
+	/**
+	 * Test findTagLine when output has no wikibase elements
+	 *
+	 * @covers MobileFrontendHooks::findTagline
+	 */
+	public function testFindTaglineWhenOnlyItemIsPresent() {
+		$fallback = function ( $item ) {
+			$this->assertEquals( 'W2', $item );
+			return 'Hello Wikidata';
+		};
+
+		$poWithItem = new ParserOutput();
+		$poWithItem->setProperty( 'wikibase_item', 'W2' );
+		$this->assertEquals( MobileFrontendHooks::findTagline( $poWithItem, $fallback ),
+			'Hello Wikidata' );
+	}
+
+	/**
+	 * Test findTagLine when output has no wikibase elements
+	 *
+	 * @covers MobileFrontendHooks::findTagline
+	 */
+	public function testFindTaglineWhenWikibaseAttrsArePresent() {
+		$fallback = function () {
+			$this->fail( 'Fallback shouldn\'t be called' );
+		};
+
+		$poWithBoth = new ParserOutput();
+		$poWithBoth->setProperty( 'wikibase-shortdesc', 'Hello world' );
+		$poWithBoth->setProperty( 'wikibase_item', 'W2' );
+		$this->assertEquals( MobileFrontendHooks::findTagline( $poWithBoth, $fallback ),
+			'Hello world' );
+	}
+
+	/**
 	 * Test no alternate/canonical link is set on Special:MobileCite
 	 *
-	 * @covers MobileFrontendHooks::OnBeforePageDisplay
+	 * @covers MobileFrontendHooks::onBeforePageDisplay
 	 */
 	public function testSpecialMobileCiteOnBeforePageDisplay() {
 		$this->setMwGlobals( [
+			'wgMFEnableManifest' => false,
 			'wgMobileUrlTemplate' => true,
 			'wgMFNoindexPages' => true
 		] );
 		$param = $this->getContextSetup( 'mobile', [], SpecialPage::getTitleFor( 'MobileCite' ) );
 		$out = $param['out'];
-		$sk = $param['sk'];
+		$skin = $param['sk'];
 
-		MobileFrontendHooks::onBeforePageDisplay( $out, $sk );
+		MobileFrontendHooks::onBeforePageDisplay( $out, $skin );
 
 		$links = $out->getLinkTags();
 		$this->assertEquals( 0, count( $links ),
@@ -35,7 +98,7 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 	 * Test headers and alternate/canonical links to be set or not
 	 *
 	 * @dataProvider onBeforePageDisplayDataProvider
-	 * @covers MobileFrontendHooks::OnBeforePageDisplay
+	 * @covers MobileFrontendHooks::onBeforePageDisplay
 	 */
 	public function testOnBeforePageDisplay( $mobileUrlTemplate, $mfNoindexPages,
 		$mfEnableXAnalyticsLogging, $mfAutoDetectMobileView, $mfVaryOnUA, $mfXAnalyticsItems,
@@ -43,6 +106,7 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 	) {
 		// set globals
 		$this->setMwGlobals( [
+			'wgMFEnableManifest' => false,
 			'wgMobileUrlTemplate' => $mobileUrlTemplate,
 			'wgMFNoindexPages' => $mfNoindexPages,
 			'wgMFEnableXAnalyticsLogging' => $mfEnableXAnalyticsLogging,
@@ -53,10 +117,10 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 		// test with forced mobile view
 		$param = $this->getContextSetup( 'mobile', $mfXAnalyticsItems );
 		$out = $param['out'];
-		$sk = $param['sk'];
+		$skin = $param['sk'];
 
 		// run the test
-		MobileFrontendHooks::onBeforePageDisplay( $out, $sk );
+		MobileFrontendHooks::onBeforePageDisplay( $out, $skin );
 
 		// test, if alternate or canonical link is added, but not both
 		$links = $out->getLinkTags();
@@ -80,10 +144,10 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 		// test with forced desktop view
 		$param = $this->getContextSetup( 'desktop', $mfXAnalyticsItems );
 		$out = $param['out'];
-		$sk = $param['sk'];
+		$skin = $param['sk'];
 
 		// run the test
-		MobileFrontendHooks::onBeforePageDisplay( $out, $sk );
+		MobileFrontendHooks::onBeforePageDisplay( $out, $skin );
 		// test, if alternate or canonical link is added, but not both
 		$links = $out->getLinkTags();
 		$this->assertEquals( $isAlternateCanonical, count( $links ),
@@ -116,14 +180,14 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 	 */
 	protected function getContextSetup( $mode, $mfXAnalyticsItems, $title = null ) {
 		MobileContext::resetInstanceForTesting();
-		// create a new instance of MobileContext
 		$context = MobileContext::singleton();
+
 		// create a DerivativeContext to use in MobileContext later
 		$mainContext = new DerivativeContext( RequestContext::getMain() );
 		// create a new, empty OutputPage
 		$out = new OutputPage( $context );
 		// create a new, empty SkinTemplate
-		$sk = new SkinTemplate();
+		$skin = new SkinTemplate();
 		if ( is_null( $title ) ) {
 			// create a new Title (main page)
 			$title = Title::newMainPage();
@@ -136,7 +200,7 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 		// set the main page title to the context
 		$mainContext->setTitle( $title );
 		// set the context to the SkinTemplate
-		$sk->setContext( $mainContext );
+		$skin->setContext( $mainContext );
 		// set the OutputPage to the context
 		$mainContext->setOutput( $out );
 		// set the DerivativeContext as a base to MobileContext
@@ -151,13 +215,13 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 		// return the stuff
 		return [
 			'out' => $out,
-			'sk' => $sk,
+			'sk' => $skin,
 			'context' => $context,
 		];
 	}
 
 	/**
-	 * Dataprovider fro testOnBeforePageDisplay
+	 * Dataprovider for testOnBeforePageDisplay
 	 */
 	public function onBeforePageDisplayDataProvider() {
 		return [
@@ -179,6 +243,9 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 		];
 	}
 
+	/**
+	 * @covers MobileFrontendHooks::onTitleSquidURLs
+	 */
 	public function testOnTitleSquidURLs() {
 		$this->setMwGlobals( [
 			'wgMobileUrlTemplate' => '%h0.m.%h1.%h2',
@@ -204,19 +271,12 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 	/**
 	 * @dataProvider provideOnPageRenderingHash
 	 * @covers MobileFrontendHooks::onPageRenderingHash
-	 *
-	 * @param bool $shouldConfstrChange Whether $confstr parameter should have
-	 *  changed
-	 * @param bool $forceMobileView
-	 * @param bool $stripResponsiveImages
 	 */
 	public function testOnPageRenderingHash(
 		$shouldConfstrChange,
-		$forceMobileView,
 		$stripResponsiveImages
 	) {
 		$context = MobileContext::singleton();
-		$context->setForceMobileView( $forceMobileView );
 		$context->setStripResponsiveImages( $stripResponsiveImages );
 
 		$expectedConfstr = $confstr = '';
@@ -235,9 +295,79 @@ class MobileFrontendHooksTest extends MediaWikiTestCase {
 
 	public static function provideOnPageRenderingHash() {
 		return [
-			[ true, true, true ],
-			[ false, true, false ],
-			[ false, false, true ],
+			[ true, true ],
+			[ false, false ],
+		];
+	}
+
+	/**
+	 * @dataProvider provideDoThumbnailBeforeProduceHTML
+	 * @covers MobileFrontendHooks::onPageRenderingHash
+	 */
+	public function testDoThumbnailBeforeProduceHTML(
+		$expected,
+		$mimeType,
+		$stripResponsiveImages = true
+	) {
+		$file = $mimeType ? $this->factoryFile( $mimeType ) : null;
+		$thumbnail = new ThumbnailImage(
+			$file,
+
+			// The following is stub data that stops `ThumbnailImage#__construct`,
+			// triggering a warning.
+			'/foo.svg',
+			false,
+			[
+				'width' => 375,
+				'height' => 667
+			]
+		);
+
+		MobileContext::singleton()->setStripResponsiveImages( $stripResponsiveImages );
+
+		// We're only asserting that the `srcset` attribute is unset.
+		$attribs = [ 'srcset' => 'bar' ];
+
+		$linkAttribs = [];
+
+		MobileFrontendHooks::onThumbnailBeforeProduceHTML(
+			$thumbnail,
+			$attribs,
+			$linkAttribs
+		);
+
+		$this->assertEquals( $expected, array_key_exists( 'srcset', $attribs ) );
+	}
+
+	/**
+	 * Creates an instance of `File` which has the given MIME type.
+	 *
+	 * @return File
+	 */
+	private function factoryFile( $mimeType ) {
+		$file = $this->getMockBuilder( 'File' )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$file->method( 'getMimeType' )
+			->willReturn( $mimeType );
+
+		return $file;
+	}
+
+	public static function provideDoThumbnailBeforeProduceHTML() {
+		return [
+			[ false, 'image/jpg' ],
+
+			// `ThumbnailImage#getFile` can return `null`.
+			[ false, null ],
+
+			// It handles an image with a whitelisted MIME type.
+			[ true, 'image/svg+xml' ],
+
+			// It handles the stripping of responsive image variants from the parser
+			// output being disabled.
+			[ true, 'image/jpg', false ],
 		];
 	}
 }

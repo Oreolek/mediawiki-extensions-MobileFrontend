@@ -1,6 +1,6 @@
 ( function ( $, M ) {
 
-	var PageList = M.require( 'mobile.pagelist.scripts/WatchstarPageList' ),
+	var WatchstarPageList = M.require( 'mobile.pagelist.scripts/WatchstarPageList' ),
 		user = M.require( 'mobile.startup/user' ),
 		Icon = M.require( 'mobile.startup/Icon' ),
 		watchIcon = new Icon( {
@@ -11,12 +11,13 @@
 		setup: function () {
 			var resp = {
 				query: {
-					pages: {
-						30: {
+					pages: [
+						{
+							pageid: 30,
 							watched: ''
 						},
-						50: {}
-					}
+						{ pageid: 50 }
+					]
 				}
 			};
 
@@ -27,8 +28,24 @@
 		}
 	} );
 
-	QUnit.test( 'Checks watchlist status once', 4, function ( assert ) {
-		var pl = new PageList( {
+	QUnit.test( 'No watchlist status check if no ids', function ( assert ) {
+		var pl,
+			spy = this.spy;
+		pl = new WatchstarPageList( {
+			api: new mw.Api(),
+			pages: [ {}, {} ]
+		} );
+		return pl.getPages().done( function () {
+			assert.ok( spy.calledOnce,
+				'A request to API was made for pages but not watch status' );
+			assert.strictEqual( pl.$el.find( '.watch-this-article' ).length, 0, '0 articles have watch stars' );
+		} );
+	} );
+
+	QUnit.test( 'Checks watchlist status once', function ( assert ) {
+		var pl,
+			spy = this.spy;
+		pl = new WatchstarPageList( {
 			api: new mw.Api(),
 			pages: [ {
 				id: 30
@@ -36,15 +53,19 @@
 				id: 50
 			} ]
 		} );
-		assert.ok( this.spy.calledOnce, 'run callback once' );
-		assert.ok( this.spy.calledWith( {
-			action: 'query',
-			prop: 'info',
-			inprop: 'watched',
-			pageids: [ 30, 50 ]
-		} ), 'A request to API was made to retrieve the statuses' );
-		assert.strictEqual( pl.$el.find( '.watch-this-article' ).length, 2, '2 articles have watch stars' );
-		assert.strictEqual( pl.$el.find( '.' + watchIcon.getGlyphClassName() ).length, 1, '1 of articles is marked as watched' );
+		return pl.getPages().done( function () {
+			assert.ok( spy.calledTwice,
+				'run callback twice (inside postRender and this call) - no caching occurs' );
+			assert.ok( spy.calledWith( {
+				formatversion: 2,
+				action: 'query',
+				prop: 'info',
+				inprop: 'watched',
+				pageids: [ 30, 50 ]
+			} ), 'A request to API was made to retrieve the statuses' );
+			assert.strictEqual( pl.$el.find( '.watch-this-article' ).length, 2, '2 articles have watch stars' );
+			assert.strictEqual( pl.$el.find( '.' + watchIcon.getGlyphClassName() ).length, 1, '1 of articles is marked as watched' );
+		} );
 	} );
 
 }( jQuery, mw.mobileFrontend ) );

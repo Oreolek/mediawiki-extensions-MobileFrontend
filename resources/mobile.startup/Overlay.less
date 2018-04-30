@@ -1,12 +1,6 @@
-@import 'minerva.variables';
-@import 'minerva.mixins';
-@import 'mediawiki.ui/variables';
+@import 'mobile.variables';
 
 /* stylelint-disable no-descending-specificity */
-
-.mw-ui-icon-back {
-	.m-background-image( 'back-ltr.png' );
-}
 
 .overlay-enabled {
 	#mw-mf-page-center {
@@ -14,8 +8,6 @@
 		// FIXME: override old overlay styles, remove when old overlays gone
 		display: block;
 	}
-
-	background-color: @skinContentBgColor;
 
 	.overlay, #mw-mf-page-center {
 		// use height instead of bottom 0 so that overlay expands when there's
@@ -79,9 +71,9 @@
 //
 // Styleguide 7.2.
 
-// Overlays (constructive)
+// Overlays
 //
-// Constructive overlays should be used when user interaction is required in the
+// Overlays should be used when user interaction is required in the
 // form of, well, a form. These overlays should NOT be set up as a chain (see
 // above for those), but rather as a single action that is completed once the user
 // presses the "Submit" button.
@@ -110,7 +102,6 @@
 	width: 100%;
 	background: #fff;
 	z-index: @z-indexOverlay;
-	padding-top: @headerHeight;
 	display: none;
 
 	&.visible {
@@ -135,12 +126,9 @@
 	}
 
 	.panel {
-		padding: 12px @contentMargin;
+		padding-top: 12px;
+		padding-bottom: 12px;
 		border-bottom: 1px solid @grayLightest;
-	}
-
-	.license {
-		.secondary-text();
 	}
 
 	.content {
@@ -157,14 +145,15 @@
 	.content-header {
 		background-color: @colorGray15;
 		border-bottom: 1px solid @colorGray14;
-		padding: 20px @contentMargin;
+		padding-top: 20px;
+		padding-bottom: 20px;
 		line-height: inherit;
 	}
 
 	@buttonWidth: 40px;
 	.slider-button {
 		position: absolute;
-		top: @headerHeight;
+		top: 0;
 		width: @buttonWidth;
 		bottom: 0;
 		z-index: @z-indexOverlay;
@@ -207,7 +196,6 @@
 			// links doesn't need an underline
 			text-decoration: none;
 			border-radius: 0;
-			height: @headerHeight;
 			cursor: pointer;
 			position: relative;
 
@@ -215,7 +203,7 @@
 				top: 0;
 			}
 
-			&[disabled] {
+			&[ disabled ] {
 				opacity: 0.5;
 			}
 
@@ -223,6 +211,10 @@
 				outline: 0;
 			}
 		}
+	}
+
+	button {
+		cursor: pointer;
 	}
 
 	.continue {
@@ -238,8 +230,8 @@
 	h2 {
 		display: table;
 		width: 100%;
-		// FIXME: should not be necessary, scope other h2s to .content
-		font-size: @headerTitleFontSize;
+		// reset default headings. Overide default font size.
+		font-size: 1em;
 
 		> * {
 			width: 1em;
@@ -264,10 +256,6 @@
 		li {
 			display: block;
 		}
-	}
-
-	> ul, button {
-		width: @headerHeight;
 	}
 }
 
@@ -309,7 +297,6 @@
 // Bottom Overlays
 //
 // A overlay that is docked to the bottom of the screen.
-// All types of overlays (progressive and constructive) apply here.
 //
 // Markup:
 // <div class="overlay overlay-bottom position-fixed visible">
@@ -362,15 +349,8 @@
 @media all and ( min-width: @deviceWidthTablet ) {
 	.overlay {
 		.panel {
-			padding: 12px @contentPaddingTablet;
+			padding-top: 12px;
+			padding-bottom: 12px;
 		}
-	}
-}
-
-@media all and ( min-width: @wgMFDeviceWidthDesktop ) {
-	.overlay-header {
-		// Make sure the close button and secondary button icon images are aligned
-		// with the content.
-		max-width: @contentMaxWidthTablet + ( 2 * @iconGutterWidth );
 	}
 }

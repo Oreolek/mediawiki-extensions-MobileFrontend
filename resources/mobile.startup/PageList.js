@@ -1,4 +1,4 @@
-( function ( M, $ ) {
+( function ( M ) {
 
 	var View = M.require( 'mobile.startup/View' ),
 		browser = M.require( 'mobile.startup/Browser' ).getSingleton();
@@ -15,7 +15,6 @@
 	OO.mfExtend( PageList, View, {
 		/**
 		 * @cfg {Object} defaults Default options hash.
-		 * @cfg {boolean} defaults.imagesDisabled whether to show images or not.
 		 * @cfg {Page[]} defaults.pages Array of page objects returned from the server.
 		 * E.g. [
 		 *   {
@@ -33,32 +32,25 @@
 		 * ]
 		 */
 		defaults: {
-			imagesDisabled: mw.config.get( 'wgImagesDisabled' ),
 			pages: [],
 			enhance: false
 		},
 		/**
 		 * Render page images for the existing page list. Assumes no page images have been loaded.
-		 * Only load when wgImagesDisabled has not been activated via Special:MobileOptions.
 		 *
 		 * @method
 		 */
 		renderPageImages: function () {
-			var delay,
-				self = this;
+			var self = this;
 
-			if ( !this.options.imagesDisabled ) {
-				// Delay an unnecessary load of images on mobile (slower?) connections
-				// In particular on search results which can be regenerated quickly.
-				delay = browser.isWideScreen() ? 0 : 1000;
-
-				window.setTimeout( function () {
-					self.$( '.list-thumb' ).each( function () {
-						var style = $( this ).data( 'style' );
-						$( this ).attr( 'style', style );
-					} );
-				}, delay );
-			}
+			setTimeout( function () {
+				self.$( '.list-thumb' ).each( function () {
+					var style = self.$( this ).data( 'style' );
+					self.$( this ).attr( 'style', style );
+				} );
+			// Delay an unnecessary load of images on mobile (slower?) connections
+			// In particular on search results which can be regenerated quickly.
+			}, browser.isWideScreen() ? 0 : 1000 );
 		},
 		/**
 		 * @inheritdoc
@@ -75,4 +67,4 @@
 	M.define( 'mobile.startup/PageList', PageList )
 		.deprecate( 'mobile.pagelist/PageList' );
 
-}( mw.mobileFrontend, jQuery ) );
+}( mw.mobileFrontend ) );

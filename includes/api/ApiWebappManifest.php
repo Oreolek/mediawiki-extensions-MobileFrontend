@@ -1,7 +1,4 @@
 <?php
-/**
- * ApiWebappManifest.php
- */
 
 /**
  * Return the webapp manifest for this wiki
@@ -27,7 +24,7 @@ class ApiWebappManifest extends ApiBase {
 
 		$appleTouchIcon = $config->get( 'AppleTouchIcon' );
 		if ( $appleTouchIcon !== false ) {
-			$appleTouchIconUrl = wfExpandUrl( $appleTouchIcon, PROTO_RELATIVE );
+			$appleTouchIconUrl = wfExpandUrl( $appleTouchIcon, PROTO_CURRENT );
 			$request = MWHttpRequest::factory( $appleTouchIconUrl );
 			$request->execute();
 			$appleTouchIconContent = $request->getContent();
@@ -47,7 +44,7 @@ class ApiWebappManifest extends ApiBase {
 		$resultObj->addValue( null, 'icons', $icons );
 
 		$main = $this->getMain();
-		$main->setCacheControl( [ 's-maxage'=>86400, 'max-age'=>86400 ] );
+		$main->setCacheControl( [ 's-maxage' => 86400, 'max-age' => 86400 ] );
 		$main->setCacheMode( 'public' );
 	}
 

@@ -1,9 +1,10 @@
-( function ( M, $ ) {
+( function ( M ) {
 	var ReferencesHtmlScraperGateway =
 		M.require( 'mobile.references.gateway/ReferencesHtmlScraperGateway' ),
 		cache = M.require( 'mobile.startup/cache' ),
 		ReferencesGateway = M.require( 'mobile.references.gateway/ReferencesGateway' ),
 		MemoryCache = cache.MemoryCache,
+		util = M.require( 'mobile.startup/util' ),
 		NoCache = cache.NoCache,
 		referencesMobileViewGateway = null;
 
@@ -24,7 +25,6 @@
 	 * cache anything. The singleton instance exposed by this module uses
 	 * a MemoryCache which caches requests in-memory. Any other Cache class
 	 * compatible with mobile.cache's interface will actually work.
-	 *
 	 */
 	function ReferencesMobileViewGateway( api, cache ) {
 		ReferencesHtmlScraperGateway.call( this, api );
@@ -38,12 +38,12 @@
 		 *
 		 * @method
 		 * @param {Page} page
-		 * @return {jQuery.Promise} promise that resolves with the list of
+		 * @return {jQuery.Deferred} promise that resolves with the list of
 		 *  sections on the page
 		 */
 		getReferencesLists: function ( page ) {
 			var self = this,
-				result = $.Deferred(),
+				result = util.Deferred(),
 				cachedReferencesSections = this.cache.get( page.id );
 
 			if ( cachedReferencesSections ) {
@@ -60,15 +60,14 @@
 				var sections = {};
 
 				data.mobileview.sections.forEach( function ( section ) {
-					var $section = $( '<div>' ).html( section.text );
+					var $section = util.parseHTML( '<div>' ).html( section.text );
 
 					sections[ $section.find( '.mw-headline' ).attr( 'id' ) ] = $section.find( '.references' );
 				} );
 
 				self.cache.set( page.id, sections );
-
 				result.resolve( sections );
-			} ).fail( function () {
+			}, function () {
 				result.reject( ReferencesGateway.ERROR_OTHER );
 			} );
 
@@ -95,7 +94,7 @@
 			var self = this;
 
 			return this.getReferencesLists( page ).then( function ( sections ) {
-				var $container = $( '<div>' );
+				var $container = util.parseHTML( '<div>' );
 
 				Object.keys( sections ).forEach( function ( sectionId ) {
 					$container.append( sections[ sectionId ] );
@@ -121,9 +120,7 @@
 		return referencesMobileViewGateway;
 	};
 
-	M.define(
-		'mobile.references.gateway/ReferencesMobileViewGateway',
-		ReferencesMobileViewGateway
-	);
+	M.define( 'mobile.references.gateway/ReferencesMobileViewGateway',
+		ReferencesMobileViewGateway );
 
-}( mw.mobileFrontend, jQuery ) );
+}( mw.mobileFrontend ) );

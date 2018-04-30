@@ -1,7 +1,4 @@
 <?php
-/**
- * SpecialMobileMenu.php
- */
 
 /**
  * Special page designed for rendering a skin's menu without an article
@@ -31,11 +28,5 @@ class SpecialMobileMenu extends MobileSpecialPage {
 		$out = $this->getOutput();
 		$out->setPageTitle( $this->msg( 'mobile-frontend-main-menu-page-title' ) );
 		$out->setProperty( 'bodyClassName', 'navigation-enabled navigation-full-screen' );
-		$out->addModuleStyles(
-			[
-				'mobile.mainMenu.icons',
-				'mobile.mainMenu.styles',
-			]
-		);
 	}
 }

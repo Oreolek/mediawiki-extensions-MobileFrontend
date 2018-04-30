@@ -1,4 +1,6 @@
-( function ( M, $ ) {
+( function ( M ) {
+	var util = M.require( 'mobile.startup/util' );
+
 	/**
 	 * API for managing clickable watchstar
 	 *
@@ -21,10 +23,10 @@
 		 * @param {Object} resp Response from the server
 		 */
 		_loadIntoCache: function ( resp ) {
-			var self = this;
+			var cache = this._cache;
 			if ( resp.query && resp.query.pages ) {
-				Object.keys( resp.query.pages ).forEach( function ( id ) {
-					self._cache[ id ] = resp.query.pages[ id ].hasOwnProperty( 'watched' );
+				resp.query.pages.forEach( function ( page ) {
+					cache[ page.pageid ] = page.hasOwnProperty( 'watched' );
 				} );
 			}
 		},
@@ -36,26 +38,23 @@
 		 * @return {jQuery.Deferred}
 		 */
 		loadWatchStatus: function ( ids, markAsAllWatched ) {
-			var self = this,
-				result = $.Deferred();
+			var self = this;
 
 			if ( markAsAllWatched ) {
 				ids.forEach( function ( id ) {
 					self._cache[ id ] = true;
 				} );
-				result.resolve();
-			} else {
-				this.api.get( {
-					action: 'query',
-					prop: 'info',
-					inprop: 'watched',
-					pageids: ids
-				} ).done( function ( resp ) {
-					self._loadIntoCache( resp );
-					result.resolve();
-				} );
+				return util.Deferred().resolve();
 			}
-			return result;
+			return this.api.get( {
+				formatversion: 2,
+				action: 'query',
+				prop: 'info',
+				inprop: 'watched',
+				pageids: ids
+			} ).then( function ( resp ) {
+				self._loadIntoCache( resp );
+			} );
 		},
 
 		/**
@@ -93,7 +92,7 @@
 			data = {
 				action: 'watch'
 			};
-			if ( id !== 0 ) {
+			if ( !page.isMissing ) {
 				data.pageids = id;
 			} else {
 				// it's a new page use title instead
@@ -106,11 +105,10 @@
 			return this.api.postWithToken( 'watch', data ).done( function () {
 				var newStatus = !self.isWatchedPage( page );
 				self.setWatchedPage( page, newStatus );
-				M.emit( 'watched', page, newStatus );
 			} );
 		}
 	};
 
 	M.define( 'mobile.watchstar/WatchstarGateway', WatchstarGateway );
 
-}( mw.mobileFrontend, jQuery ) );
+}( mw.mobileFrontend ) );

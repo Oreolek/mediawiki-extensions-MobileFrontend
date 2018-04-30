@@ -245,6 +245,8 @@ class MobileContextTest extends MediaWikiTestCase {
 
 	/**
 	 * A null title shouldn't result in a fatal exception - bug T142914
+	 * @covers MobileContext::shouldDisplayMobileView
+	 * @covers MobileContext::setUseFormat
 	 */
 	public function testRedirectMobileEnabledPages() {
 		$this->setMwGlobals( [
@@ -519,7 +521,7 @@ class MobileContextTest extends MediaWikiTestCase {
 				'', ''
 			],
 			/*
-		    FIXME: works locally but fails in Jerkins
+			FIXME: works locally but fails in Jerkins
 			array( 'Main Page', '/?mobileaction=toggle_view_desktop',
 				$token, 'http://en.wikipedia.org/wiki/Main_Page'
 			),
@@ -546,10 +548,14 @@ class MobileContextTest extends MediaWikiTestCase {
 			array( 'Page', '/wiki/index.php?title=Page&mobileaction=toggle_view_mobile',
 				$token, 'http://en.m.wikipedia.org/wiki/Page',
 			),
-		    */
+			*/
 		];
 	}
 
+	/**
+	 * @codeCoverageIgnore
+	 * @coversNothing
+	 */
 	public function testBug71329() {
 		SpecialPageFactory::resetList();
 		RequestContext::resetMain();
@@ -565,43 +571,35 @@ class MobileContextTest extends MediaWikiTestCase {
 	}
 
 	/**
-	 * @dataProvider provideGetConfigVariable
-	 * @covers MobileContext::getConfigVariable
+	 * @dataProvider provideShouldStripResponsiveImages
+	 * @covers MobileContext::shouldStripResponsiveImages
+	 * @covers MobileContext::setForceMobileView
 	 */
-	public function testGetConfigVariable(
+	public function testShouldStripResponsiveImages(
 		$expected,
-		$madeUpConfigVariable,
-		$mobileMode = MobileContext::MODE_STABLE
+		$forceMobileView,
+		$wgMFStripResponsiveImages,
+		$stripResponsiveImages = null
 	) {
-		$this->setMwGlobals( [
-			'wgMFEnableBeta' => true,
-			'wgMFMadeUpConfigVariable' => $madeUpConfigVariable
-		] );
-
 		$context = MobileContext::singleton();
-		$context->setMobileMode( $mobileMode );
+		$context->setForceMobileView( $forceMobileView );
 
-		$this->assertEquals(
-			$expected,
-			$context->getConfigVariable( 'MFMadeUpConfigVariable' )
+		$this->setMwGlobals(
+			'wgMFStripResponsiveImages',
+			$wgMFStripResponsiveImages
 		);
+
+		$context->setStripResponsiveImages( $stripResponsiveImages );
+
+		$this->assertEquals( $expected, $context->shouldStripResponsiveImages() );
 	}
 
-	public static function provideGetConfigVariable() {
-		$madeUpConfigVariable = [
-			'beta' => 'bar',
-			'base' => 'foo',
-		];
-
+	public static function provideShouldStripResponsiveImages() {
 		return [
-			[ 'foo', $madeUpConfigVariable, MobileContext::MODE_STABLE ],
-			[ 'bar', $madeUpConfigVariable, MobileContext::MODE_BETA ],
-
-			[ null, [ 'alpha' => 'baz' ] ],
-
-			// When the config variable isn't an array, then its value is returned
-			// regardless of whether the user is a member of the beta group.
-			[ true, true ],
+			[ true, true, true ],
+			[ false, true, false ],
+			[ false, false, true ],
+			[ false, true, true, false ],
 		];
 	}
 }

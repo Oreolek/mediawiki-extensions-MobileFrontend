@@ -5,16 +5,17 @@
 
 	QUnit.module( 'MobileFrontend: WatchstarGateway.js' );
 
-	QUnit.test( '_loadIntoCache', 2, function ( assert ) {
+	QUnit.test( '_loadIntoCache', function ( assert ) {
 		var gateway = new WatchstarGateway( new mw.Api() );
 		gateway._loadIntoCache( {
 			query: {
-				pages: {
-					19: {},
-					30: {
+				pages: [
+					{ pageid: 19 },
+					{
+						pageid: 30,
 						watched: ''
 					}
-				}
+				]
 			}
 		} );
 		assert.strictEqual( gateway.isWatchedPage( new Page( {
@@ -25,7 +26,7 @@
 		} ) ), false, 'Able to check watch status' );
 	} );
 
-	QUnit.test( 'isWatchedPage', 1, function ( assert ) {
+	QUnit.test( 'isWatchedPage', function ( assert ) {
 		var gateway = new WatchstarGateway( new mw.Api() );
 		assert.ok(
 			gateway.isWatchedPage(

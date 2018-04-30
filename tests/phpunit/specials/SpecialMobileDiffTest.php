@@ -3,7 +3,7 @@
 /**
  * @group MobileFrontend
  */
-class SpecialMobileDiffTest extends MediaWikiTestCase {
+class SpecialMobileDiffTest extends MediaWikiLangTestCase {
 	/** Keeps track of request variables that should be unset on teardown **/
 	private $unsetReqVals = [];
 
@@ -94,38 +94,44 @@ class MockSpecialMobileDiff extends SpecialMobileDiff {
 	public function executeBadQuery() {
 		return false;
 	}
-	public function showDiff() {
+	public function displayDiffPage() {
 		// showDiff can be stubed, but the differenceengine has to be created
 		$this->mDiffEngine = new $this->diffClass();
 	}
 }
 
 class MFMockRevision extends Revision {
-	private $id;
 
-	public function getId() {
-		return $this->id;
-	}
-
+	/**
+	 * @param int $revisionId
+	 */
 	public function __construct( $revisionId ) {
-		if ( $revisionId > 200 ) {
-			throw new Exception( 'Unknown revision ID' );
-		}
-		$this->id = $revisionId;
+		$title = Title::newFromText( "Page_$revisionId" );
+
+		parent::__construct( [
+			'id' => $revisionId,
+			'title' => $title,
+		] );
 	}
 
 	public static function newFromId( $revisionId, $flags = 0 ) {
 		if ( $revisionId <= 200 ) {
 			return new MFMockRevision( $revisionId );
+		} else {
+			return null;
 		}
 	}
 
-	public function getTitle() {
-		return Title::newFromText( "Page_$this->id" );
+	public function getPrevious() {
+		return new MFMockRevision( $this->getId() - 1 );
 	}
 
-	public function getPrevious() {
-		return new MFMockRevision( $this->id - 1 );
+	public function getSize() {
+		return 100;
+	}
+
+	public function getSha1() {
+		return 'mock-hash-' . $this->getId();
 	}
 
 	/**
@@ -134,7 +140,7 @@ class MFMockRevision extends Revision {
 	 * @return Revision or null
 	 */
 	public function getNext() {
-		return new MFMockRevision( $this->id + 1 );
+		return new MFMockRevision( $this->getId() + 1 );
 	}
 }
 

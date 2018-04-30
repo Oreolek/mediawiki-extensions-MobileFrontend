@@ -30,7 +30,7 @@ class MobileContextShouldDisplayMobileViewIntegrationTest extends MediaWikiTestC
 	/**
 	 * @covers MobileContext::shouldDisplayMobileView
 	 */
-	public function test_it_can_be_overridden() {
+	public function testItCanBeOverriden() {
 		$this->context->setForceMobileView( true );
 
 		$this->assertTrue( $this->context->shouldDisplayMobileView() );
@@ -65,7 +65,6 @@ class MobileContextShouldDisplayMobileViewIntegrationTest extends MediaWikiTestC
 		}
 
 		if ( $formatCookie !== null ) {
-
 			// N.B. that the format and the "stop mobile redirect" cookies
 			// ("mf_useformat" and "stopMobileRedirect" respectively) aren't prefix
 			// with MediaWiki's cookie prefix ($wgCookiePrefix).

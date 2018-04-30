@@ -1,5 +1,6 @@
-( function ( M, $ ) {
+( function ( M ) {
 	var TalkOverlayBase = M.require( 'mobile.talk.overlays/TalkOverlayBase' ),
+		util = M.require( 'mobile.startup/util' ),
 		popup = M.require( 'mobile.startup/toast' ),
 		user = M.require( 'mobile.startup/user' ),
 		Page = M.require( 'mobile.startup/Page' ),
@@ -18,7 +19,7 @@
 	}
 
 	OO.mfExtend( TalkSectionOverlay, TalkOverlayBase, {
-		templatePartials: $.extend( {}, TalkOverlayBase.prototype.templatePartials, {
+		templatePartials: util.extend( {}, TalkOverlayBase.prototype.templatePartials, {
 			header: mw.template.get( 'mobile.talk.overlays', 'Section/header.hogan' ),
 			content: mw.template.get( 'mobile.talk.overlays', 'Section/content.hogan' )
 		} ),
@@ -31,11 +32,11 @@
 		 * @cfg {string} defaults.info Message that informs the user their talk reply will be
 		 * automatically signed.
 		 */
-		defaults: $.extend( {}, TalkOverlayBase.prototype.defaults, {
+		defaults: util.extend( {}, TalkOverlayBase.prototype.defaults, {
 			saveButton: new Button( {
 				block: true,
 				additionalClassNames: 'save-button',
-				constructive: true,
+				progressive: true,
 				label: mw.msg( 'mobile-frontend-editor-save' )
 			} ).options,
 			title: undefined,
@@ -43,7 +44,7 @@
 			reply: mw.msg( 'mobile-frontend-talk-reply' ),
 			info: mw.msg( 'mobile-frontend-talk-reply-info' )
 		} ),
-		events: $.extend( {}, TalkOverlayBase.prototype.events, {
+		events: util.extend( {}, TalkOverlayBase.prototype.events, {
 			'focus textarea': 'onFocusTextarea',
 			'click .save-button': 'onSaveClick'
 		} ),
@@ -54,7 +55,7 @@
 		 */
 		postRender: function () {
 			TalkOverlayBase.prototype.postRender.apply( this );
-			this.$saveButton = $( '.save-button' );
+			this.$saveButton = this.$( '.save-button' );
 			if ( !this.options.section ) {
 				this.renderFromApi( this.options );
 			} else {
@@ -113,7 +114,8 @@
 					action: 'edit',
 					title: this.options.title,
 					section: this.options.id,
-					appendtext: val
+					appendtext: val,
+					redirect: true
 				} ).done( function () {
 					popup.show( mw.msg( 'mobile-frontend-talk-reply-success' ) );
 					// invalidate the cache
@@ -134,7 +136,7 @@
 
 					if (
 						response.error &&
-						$.inArray( response.error.code, whitelistedErrorInfo ) > -1
+						whitelistedErrorInfo.indexOf( response.error.code ) > -1
 					) {
 						msg = response.error.info;
 					} else {
@@ -152,5 +154,5 @@
 		}
 	} );
 
-	M.define( 'mobile.talk.overlays/TalkSectionOverlay', TalkSectionOverlay );
-}( mw.mobileFrontend, jQuery ) );
+	M.define( 'mobile.talk.overlays/TalkSectionOverlay', TalkSectionOverlay ); // resource-modules-disable-line
+}( mw.mobileFrontend ) );

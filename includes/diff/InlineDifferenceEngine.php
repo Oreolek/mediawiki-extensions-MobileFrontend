@@ -1,7 +1,4 @@
 <?php
-/**
- * InlineDifferenceEngine.php
- */
 
 /**
  * Extends the basic DifferenceEngine from core to enable inline difference view
@@ -12,10 +9,11 @@ class InlineDifferenceEngine extends DifferenceEngine {
 	 * Checks whether the given Revision was deleted
 	 * @todo FIXME: Upstream to DifferenceEngine - refactor showDiffPage
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
 	public function isDeletedDiff() {
-		return $this->mNewRev && $this->mNewRev->isDeleted( Revision::DELETED_TEXT );
+		return $this->mNewRev && $this->mNewRev->isDeleted( Revision::DELETED_TEXT ) ||
+			$this->mOldRev && $this->mOldRev->isDeleted( Revision::DELETED_TEXT );
 	}
 
 	/**
@@ -23,7 +21,7 @@ class InlineDifferenceEngine extends DifferenceEngine {
 	 * restricted.
 	 * FIXME: Upstream to DifferenceEngine - refactor showDiffPage
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
 	public function isSuppressedDiff() {
 		return $this->isDeletedDiff() &&
@@ -35,7 +33,7 @@ class InlineDifferenceEngine extends DifferenceEngine {
 	 * and current revisions.
 	 * @todo FIXME: Upstream to DifferenceEngine - refactor showDiffPage
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
 	public function isUserAllowedToSee() {
 		$user = $this->getUser();
@@ -49,19 +47,70 @@ class InlineDifferenceEngine extends DifferenceEngine {
 	}
 
 	/**
+	 * Render the inline difference between two revisions
+	 * using InlineDiffEngine
+	 * @throws MWException If the content is not an instance of TextContent and
+	 * wgContentHandlerTextFallback was set to 'fail'.
+	 *
+	 * @param bool $diffOnly
+	 */
+	public function showDiffPage( $diffOnly = false ) {
+		$output = $this->getOutput();
+
+		$prevId = $this->getOldid();
+		$unhide = (bool)$this->getRequest()->getVal( 'unhide' );
+		$diff = $this->getDiffBody();
+
+		$rev = Revision::newFromId( $this->getNewid() );
+
+		if ( !$prevId ) {
+			$audience = $unhide ? Revision::FOR_THIS_USER : Revision::FOR_PUBLIC;
+			$diff = '<ins>'
+				. nl2br(
+					htmlspecialchars(
+						ContentHandler::getContentText( $rev->getContent( $audience ) )
+					)
+				)
+				. '</ins>';
+		}
+
+		$warnings = $this->getWarningMessageText();
+		if ( $warnings ) {
+			$warnings = Html::warningBox( $warnings );
+		}
+		if ( $this->isHiddenFromUser() ) {
+			// When an administrative user deletes a page, the diff is available to
+			// them and other admins but no indication would be given that it's hidden
+			// from unprivileged users. It's considered best to present the anon view
+			// in this case, which is an empty diff.
+			$diff = '';
+		}
+		$output->addHTML(
+			$warnings .
+			'<div id="mw-mf-minidiff">' .
+			$diff .
+			'</div>'
+		);
+
+		$output->addHTML( Html::rawElement(
+			'div',
+			[
+				'class' => 'patrollink'
+			],
+			$this->getPatrolledLink()
+		) );
+	}
+
+	/**
 	 * Checks whether the diff should be hidden from the current user
 	 * This is based on whether the user is allowed to see it and whether
 	 * the flag unhide is set to allow viewing deleted revisions.
 	 * @todo FIXME: Upstream to DifferenceEngine - refactor showDiffPage
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
 	public function isHiddenFromUser() {
-		if ( $this->isDeletedDiff() && ( !$this->unhide || !$this->isUserAllowedToSee() ) ) {
-			return true;
-		} else {
-			return false;
-		}
+		return $this->isDeletedDiff() && ( !$this->unhide || !$this->isUserAllowedToSee() );
 	}
 
 	/**
@@ -95,7 +144,7 @@ class InlineDifferenceEngine extends DifferenceEngine {
 				)->parse();
 			} else {
 				// Give explanation and add a link to view the diff...
-				$query = $this->getRequest()->appendQueryValue( 'unhide', '1', true );
+				$query = $this->getRequest()->appendQueryValue( 'unhide', '1' );
 				$link = $this->getTitle()->getFullURL( $query );
 				$msg = $context->msg(
 					$suppressed ? 'rev-suppressed-unhide-diff' : 'rev-deleted-unhide-diff',
@@ -108,12 +157,13 @@ class InlineDifferenceEngine extends DifferenceEngine {
 
 	/**
 	 * Creates an inline diff
-	 * @param Content $otext Old content
-	 * @param Content $ntext New content
+	 * @param string $otext Old content
+	 * @param string $ntext New content
+	 * @throws \MediaWiki\Diff\ComplexityException
 	 *
 	 * @return string
 	 */
-	function generateTextDiffBody( $otext, $ntext ) {
+	public function generateTextDiffBody( $otext, $ntext ) {
 		global $wgContLang;
 
 		// First try wikidiff2
@@ -129,26 +179,17 @@ class InlineDifferenceEngine extends DifferenceEngine {
 		$nta = explode( "\n", $wgContLang->segmentForDiff( $ntext ) );
 		$diffs = new Diff( $ota, $nta );
 		$formatter = new InlineDiffFormatter();
-		$difftext = $wgContLang->unsegmentForDiff( $formatter->format( $diffs ) );
-
-		return $difftext;
+		return $wgContLang->unsegmentForDiff( $formatter->format( $diffs ) );
 	}
 
 	/**
-	 * Reimplements getDiffBodyCacheKey from DifferenceEngine
-	 * Returns the cache key for diff body text or content.
-	 *
-	 * @throws Exception when no mOldid and mNewid is set
-	 * @see DifferenceEngine::getDiffBodyCacheKey
-	 * @return string
+	 * @inheritDoc
 	 */
-	protected function getDiffBodyCacheKey() {
-		if ( !$this->mOldid || !$this->mNewid ) {
-			throw new Exception( 'mOldid and mNewid must be set to get diff cache key.' );
-		}
+	protected function getDiffBodyCacheKeyParams() {
+		$params = parent::getDiffBodyCacheKeyParams();
+		$params[0] = 'inline-diff';
 
-		return wfMemcKey( 'diff', 'inline', self::DIFF_VERSION,
-			'oldid', $this->mOldid, 'newid', $this->mNewid );
+		return $params;
 	}
 
 	/**
@@ -159,12 +200,10 @@ class InlineDifferenceEngine extends DifferenceEngine {
 	public function getPatrolledLink() {
 		$linkInfo = $this->getMarkPatrolledLinkInfo();
 		if ( $linkInfo ) {
-			$this->getOutput()->addModules( 'mobile.patrol.ajax' );
-
 			$linkInfo = Html::linkButton(
 				$this->msg( 'markaspatrolleddiff' )->escaped(),
 				[
-					'href' => $this->mNewPage->getLocalUrl( [
+					'href' => $this->mNewPage->getLocalURL( [
 						'action' => 'markpatrolled',
 						'rcid' => $linkInfo['rcid'],
 					] ),
@@ -173,4 +212,5 @@ class InlineDifferenceEngine extends DifferenceEngine {
 		}
 		return $linkInfo;
 	}
+
 }

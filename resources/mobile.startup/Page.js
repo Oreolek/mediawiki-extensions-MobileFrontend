@@ -1,9 +1,11 @@
-( function ( HTML, M, $ ) {
+( function ( HTML, M ) {
 
 	var time = M.require( 'mobile.startup/time' ),
+		util = M.require( 'mobile.startup/util' ),
 		View = M.require( 'mobile.startup/View' ),
 		Section = M.require( 'mobile.startup/Section' ),
-		Thumbnail = M.require( 'mobile.startup/Thumbnail' );
+		Thumbnail = M.require( 'mobile.startup/Thumbnail' ),
+		BLACKLISTED_THUMBNAIL_CLASS_SELECTORS = [ 'noviewer', 'metadata' ];
 
 	/**
 	 * Mobile page view object
@@ -17,6 +19,10 @@
 	 */
 	function Page( options ) {
 		var thumb;
+		// thumbnail if not passed should be made false (truthy) so that it renders placeholder when absent
+		if ( options.thumbnail === undefined ) {
+			options.thumbnail = false;
+		}
 		this.options = options;
 		options.languageUrl = mw.util.getUrl( 'Special:MobileLanguages/' + options.title );
 		View.call( this, options );
@@ -29,7 +35,7 @@
 		this.thumbnail = options.thumbnail;
 		this.url = options.url || mw.util.getUrl( options.title );
 		this.id = options.id;
-		this.isMissing = options.isMissing;
+		this.isMissing = options.isMissing !== undefined ? options.isMissing : options.id === 0;
 		thumb = this.thumbnail;
 		if ( thumb && thumb.width ) {
 			this.thumbnail.isLandscape = thumb.width > thumb.height;
@@ -52,7 +58,6 @@
 		 * @cfg {Array} defaults.sections Array of {Section} objects.
 		 * @cfg {boolean} defaults.isMainPage Whether the page is the Main Page.
 		 * @cfg {boolean} defaults.isMissing Whether the page exists in the wiki.
-		 * @cfg {string} defaults.hash Window location hash.
 		 * @cfg {Object} defaults.thumbnail thumbnail definition corresponding to page image
 		 * @cfg {boolean} defaults.thumbnail.isLandscape whether the image is in landscape format
 		 * @cfg {number} defaults.thumbnail.width of image in pixels.
@@ -70,7 +75,6 @@
 			sections: [],
 			isMissing: false,
 			isMainPage: false,
-			hash: window.location.hash,
 			url: undefined,
 			thumbnail: {
 				isLandscape: undefined,
@@ -118,12 +122,8 @@
 			 *   </div>
 			 * </div>
 			 */
-			if ( $( '.mf-section-0' ).length ) {
-				return $( '.mf-section-0' );
-			}
-			// for cached pages that are still using mw-mobilefrontend-leadsection
-			if ( $( '.mw-mobilefrontend-leadsection' ).length ) {
-				return $( '.mw-mobilefrontend-leadsection' );
+			if ( this.$( '.mf-section-0' ).length ) {
+				return this.$( '.mf-section-0' );
 			}
 			// no lead section found
 			return null;
@@ -226,35 +226,41 @@
 		},
 
 		/**
-		 * @inheritdoc
-		 */
-		postRender: function () {
-			var self = this;
-			// Restore anchor position after everything on page has been loaded.
-			// Otherwise, images that load after a while will push the anchor
-			// from the top of the viewport.
-			if ( this.options.hash ) {
-				$( window ).on( 'load', function () {
-					window.location.hash = self.options.hash;
-				} );
-			}
-		},
-
-		/**
-		 * Return all the thumbnails in the article
+		 * Return all the thumbnails in the article. Images which have a class or link container (.image|.thumbimage)
+		 * that matches one of the items of the constant BLACKLISTED_THUMBNAIL_CLASS_SELECTORS will be excluded.
+		 * A thumbnail nested inside one of these classes will still be returned.
+		 * e.g. `<div class="noviewer"><a class="image"><img></a></div>` is not a valid thumbnail
+		 * `<a class="image noviewer"><img></a>` is not a valid thumbnail
+		 * `<a class="image"><img class="noviewer"></a>` is not a valid thumbnail
 		 * @method
 		 * @return {Thumbnail[]}
 		 */
 		getThumbnails: function () {
-			var thumbs = [];
+			var $thumbs,
+				$el = this.$el,
+				blacklistSelector = '.' + BLACKLISTED_THUMBNAIL_CLASS_SELECTORS.join( ',.' ),
+				thumbs = [];
 
 			if ( !this._thumbs ) {
-				this.$el.find( 'a.image, a.thumbimage' ).each( function () {
-					var $a = $( this ),
-						legacyMatch = $a.attr( 'href' ).match( /title=([^\/&]+)/ ),
-						match = $a.attr( 'href' ).match( /[^\/]+$/ );
+				$thumbs = $el.find( 'a.image, a.thumbimage' )
+					.not( blacklistSelector );
 
-					if ( legacyMatch || match ) {
+				$thumbs.each( function () {
+					var $a = $el.find( this ),
+						$lazyImage = $a.find( '.lazy-image-placeholder' ),
+						// Parents need to be checked as well.
+						valid = $a.parents( blacklistSelector ).length === 0 && $a.find( blacklistSelector ).length === 0,
+						legacyMatch = $a.attr( 'href' ).match( /title=([^/&]+)/ ),
+						match = $a.attr( 'href' ).match( /[^/]+$/ );
+
+					// filter out invalid lazy loaded images if so far image is valid
+					if ( $lazyImage.length && valid ) {
+						// if the regex matches it means the image has one of the classes - so we must invert the result
+						valid = !new RegExp( '\\b(' + BLACKLISTED_THUMBNAIL_CLASS_SELECTORS.join( '|' ) + ')\\b' )
+							.test( $lazyImage.data( 'class' ) );
+					}
+
+					if ( valid && ( legacyMatch || match ) ) {
 						thumbs.push(
 							new Thumbnail( {
 								el: $a,
@@ -317,9 +323,7 @@
 			displayTitle = terms && terms.label ? HTML.escape( terms.label[0] ) : pageprops.displaytitle;
 		}
 		// Add Wikidata descriptions if available (T101719)
-		if ( terms && terms.description && terms.description.length ) {
-			resp.wikidataDescription = terms.description[0];
-		}
+		resp.wikidataDescription = resp.description || undefined;
 
 		if ( thumb ) {
 			resp.thumbnail.isLandscape = thumb.width > thumb.height;
@@ -333,7 +337,7 @@
 		}
 
 		return new Page(
-			$.extend( resp, {
+			util.extend( resp, {
 				id: resp.pageid,
 				isMissing: !!resp.missing,
 				url: mw.util.getUrl( resp.title ),
@@ -343,4 +347,4 @@
 	};
 	M.define( 'mobile.startup/Page', Page );
 
-}( mw.html, mw.mobileFrontend, jQuery ) );
+}( mw.html, mw.mobileFrontend ) );

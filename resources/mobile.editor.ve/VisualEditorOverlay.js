@@ -1,6 +1,6 @@
-( function ( M, $, ve ) {
+( function ( M, ve ) {
 	var EditorOverlayBase = M.require( 'mobile.editor.common/EditorOverlayBase' ),
-		settings = M.require( 'mobile.startup/settings' );
+		util = M.require( 'mobile.startup/util' );
 
 	/**
 	 * Overlay for VisualEditor view
@@ -20,7 +20,7 @@
 		/** @inheritdoc **/
 		isBorderBox: false,
 		/** @inheritdoc **/
-		templatePartials: $.extend( {}, EditorOverlayBase.prototype.templatePartials, {
+		templatePartials: util.extend( {}, EditorOverlayBase.prototype.templatePartials, {
 			editHeader: mw.template.get( 'mobile.editor.ve', 'toolbarVE.hogan' ),
 			content: mw.template.get( 'mobile.editor.ve', 'contentVE.hogan' )
 		} ),
@@ -70,7 +70,6 @@
 						// (which has no header to scroll to)
 						section: overlay.options.sectionId || null
 					} );
-					overlay.target.activating = true;
 					overlay.target.load();
 				}, function ( e ) {
 					mw.log.warn( 'VisualEditor failed to load: ' + e );
@@ -120,7 +119,7 @@
 				mechanism: 'navigate'
 			} );
 			// Save a user setting indicating that this user prefers using the SourceEditor
-			settings.save( 'preferredEditor', 'SourceEditor', true );
+			mw.storage.set( 'preferredEditor', 'SourceEditor' );
 			this.showSpinner();
 			this.$( '.surface' ).hide();
 			// Load the SourceEditor and replace the VisualEditor overlay with it
@@ -147,4 +146,4 @@
 
 	M.define( 'mobile.editor.ve/VisualEditorOverlay', VisualEditorOverlay );
 
-}( mw.mobileFrontend, jQuery, window.ve ) );
+}( mw.mobileFrontend, window.ve ) );

@@ -1,5 +1,6 @@
-( function ( M, $ ) {
+( function ( M ) {
 	var Overlay = M.require( 'mobile.startup/Overlay' ),
+		util = M.require( 'mobile.startup/util' ),
 		Anchor = M.require( 'mobile.startup/Anchor' ),
 		NotificationsOverlay;
 
@@ -14,25 +15,25 @@
 	 */
 	NotificationsOverlay = function ( options ) {
 		var modelManager, unreadCounter, wrapperWidget,
+			self = this,
 			maxNotificationCount = mw.config.get( 'wgEchoMaxNotificationCount' ),
 			echoApi = new mw.echo.api.EchoApi();
 
 		Overlay.apply( this, options );
 
 		// Anchor tag that corresponds to a notifications badge
-		this.$badge = options.$badge;
-		this.$overlay = $( '<div>' )
+		this.badge = options.badge;
+		this.$overlay = this.parseHTML( '<div>' )
 			.addClass( 'notifications-overlay-overlay position-fixed' );
 
 		// On error use the url as a fallback
 		if ( options.error ) {
-			this.onError();
+			options.onError();
 			return;
 		}
 
 		mw.echo.config.maxPrioritizedActions = 1;
 
-		this.count = 0;
 		this.doneLoading = false;
 
 		unreadCounter = new mw.echo.dm.UnreadNotificationCounter( echoApi, 'all', maxNotificationCount );
@@ -51,13 +52,13 @@
 
 		// Mark all read
 		this.markAllReadButton = new OO.ui.ButtonWidget( {
-			icon: 'doubleCheck',
+			icon: 'checkAll',
 			title: mw.msg( 'echo-mark-all-as-read' )
 		} );
 		this.markAllReadButton.toggle( false );
 		this.$( '.overlay-header' )
 			.append(
-				$( '<div>' )
+				this.parseHTML( '<div>' )
 					.addClass( 'notifications-overlay-header-markAllRead' )
 					.append(
 						this.markAllReadButton.$element
@@ -87,11 +88,12 @@
 		);
 
 		// Populate notifications
-		wrapperWidget.populate()
-			.then( this.setDoneLoading.bind( this ) )
-			.then( this.controller.updateSeenTime.bind( this.controller ) )
-			.then( this.setBadgeSeen.bind( this ) )
-			.then( this.checkShowMarkAllRead.bind( this ) );
+		wrapperWidget.populate().then( function () {
+			self.setDoneLoading();
+			self.controller.updateSeenTime();
+			self.badge.markAsSeen();
+			self.checkShowMarkAllRead();
+		} );
 	};
 
 	OO.mfExtend( NotificationsOverlay, Overlay, {
@@ -102,7 +104,7 @@
 		 * @cfg {Object} defaults Default options hash.
 		 * @cfg {string} defaults.heading Heading text.
 		 */
-		defaults: $.extend( {}, Overlay.prototype.defaults, {
+		defaults: util.extend( {}, Overlay.prototype.defaults, {
 			heading: mw.msg( 'notifications' ),
 			footerAnchor: new Anchor( {
 				href: mw.util.getUrl( 'Special:Notifications' ),
@@ -155,42 +157,19 @@
 				} );
 		},
 		/**
-		 * Fall back to notifications archive page.
-		 * @method
-		 */
-		onError: function () {
-			window.location.href = this.$badge.attr( 'href' );
-		},
-		/**
 		 * Update the unread number on the notifications badge
 		 *
 		 * @param {number} count Number of unread notifications
 		 * @method
 		 */
 		onUnreadCountChange: function ( count ) {
-			var $badgeCounter = this.$badge.find( '.notification-count' );
-			this.count = this.controller.manager.getUnreadCounter().getCappedNotificationCount( count );
+			this.badge.setCount(
+				this.controller.manager.getUnreadCounter().getCappedNotificationCount( count )
+			);
 
-			if ( this.count >= 0 ) {
-				$badgeCounter.find( 'span' ).text(
-					mw.msg( 'echo-badge-count', mw.language.convertNumber( this.count ) )
-				).show();
-			}
-			if ( this.count === 0 ) {
-				$badgeCounter.removeClass( 'notification-unseen' );
-			}
 			this.checkShowMarkAllRead();
 		},
-		/**
-		 * Mark that all the notifications in the badge are seen.
-		 *
-		 * @method
-		 */
-		setBadgeSeen: function () {
-			this.$badge
-				.find( '.notification-count' )
-				.removeClass( 'notification-unseen' );
-		},
+
 		/** @inheritdoc */
 		preRender: function () {
 			this.options.heading = '<strong>' + mw.message( 'notifications' ).escaped() + '</strong>';
@@ -207,4 +186,4 @@
 
 	M.define( 'mobile.notifications.overlay/NotificationsOverlay', NotificationsOverlay );
 
-}( mw.mobileFrontend, jQuery ) );
+}( mw.mobileFrontend ) );

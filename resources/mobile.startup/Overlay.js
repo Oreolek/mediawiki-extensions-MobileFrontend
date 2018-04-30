@@ -1,12 +1,12 @@
-( function ( M, $ ) {
+( function ( M ) {
 
 	var View = M.require( 'mobile.startup/View' ),
 		Icon = M.require( 'mobile.startup/Icon' ),
 		Button = M.require( 'mobile.startup/Button' ),
 		Anchor = M.require( 'mobile.startup/Anchor' ),
 		icons = M.require( 'mobile.startup/icons' ),
-		browser = M.require( 'mobile.startup/Browser' ).getSingleton(),
-		$window = $( window );
+		util = M.require( 'mobile.startup/util' ),
+		browser = M.require( 'mobile.startup/Browser' ).getSingleton();
 
 	/**
 	 * Mobile modal window
@@ -32,6 +32,13 @@
 		 * @property {boolean}
 		 */
 		fullScreen: true,
+
+		/**
+		 * True if this.hide() should be invoked before firing the Overlay-exit
+		 * event
+		 * @property {boolean}
+		 */
+		hideOnExitClick: true,
 
 		/**
 		 * use '#mw-mf-viewport' rather than 'body' - for some reasons this has
@@ -85,7 +92,7 @@
 		},
 		events: {
 			// FIXME: Remove .initial-header selector when bug 71203 resolved.
-			'click .cancel, .confirm, .initial-header .back': 'onExit',
+			'click .cancel, .confirm, .initial-header .back': 'onExitClick',
 			click: 'stopPropagation'
 		},
 		/**
@@ -130,11 +137,11 @@
 		setupEmulatedIosOverlayScrolling: function () {
 			var self = this;
 			if ( this.isIos && this.hasFixedHeader ) {
-				this.$( '.overlay-content' ).on( 'touchstart', $.proxy( this, 'onTouchStart' ) )
-					.on( 'touchmove', $.proxy( this, 'onTouchMove' ) );
+				this.$( '.overlay-content' ).on( 'touchstart', this.onTouchStart.bind( this ) )
+					.on( 'touchmove', this.onTouchMove.bind( this ) );
 				// wait for things to render before doing any calculations
 				setTimeout( function () {
-					self._fixIosHeader( 'textarea, input' );
+					self._fixIosHeader( self.$( 'textarea, input' ) );
 				}, 0 );
 			}
 		},
@@ -142,10 +149,13 @@
 		 * ClickBack event handler
 		 * @param {Object} ev event object
 		 */
-		onExit: function ( ev ) {
+		onExitClick: function ( ev ) {
 			ev.preventDefault();
 			ev.stopPropagation();
-			window.history.back();
+			if ( this.hideOnExitClick ) {
+				this.hide();
+			}
+			this.emit( Overlay.EVENT_EXIT );
 		},
 		/**
 		* Event handler for touchstart, for IOS
@@ -186,18 +196,21 @@
 		 * @method
 		 */
 		show: function () {
-			var self = this;
+			var self = this,
+				$html = util.getDocument(),
+				$window = util.getWindow();
+
 			this.$el.appendTo( this.appendToElement );
-			this.scrollTop = $( document ).scrollTop();
+			this.scrollTop = $window.scrollTop();
 
 			if ( this.fullScreen ) {
-				$( 'html' ).addClass( 'overlay-enabled' );
+				$html.addClass( 'overlay-enabled' );
 				// skip the URL bar if possible
 				window.scrollTo( 0, 1 );
 			}
 
 			if ( this.closeOnContentTap ) {
-				$( '#mw-mf-page-center' ).one( 'click', $.proxy( this, 'hide' ) );
+				$html.find( '#mw-mf-page-center' ).one( 'click', this.hide.bind( this ) );
 			}
 
 			// prevent scrolling and bouncing outside of .overlay-content
@@ -221,8 +234,11 @@
 		 * @return {boolean} Whether the overlay was successfully hidden or not
 		 */
 		hide: function () {
+			var $window = util.getWindow(),
+				$html = util.getDocument();
+
 			if ( this.fullScreen ) {
-				$( 'html' ).removeClass( 'overlay-enabled' );
+				$html.removeClass( 'overlay-enabled' );
 				// return to last known scroll position
 				window.scrollTo( document.body.scrollLeft, this.scrollTop );
 			}
@@ -269,15 +285,16 @@
 		 *
 		 * @method
 		 * @private
-		 * @param {string} el CSS selector for elements that may trigger virtual
+		 * @param {jQuery.Object} $el for elements that may trigger virtual
 		 * keyboard (usually inputs, textareas, contenteditables).
 		 */
-		_fixIosHeader: function ( el ) {
-			var self = this;
+		_fixIosHeader: function ( $el ) {
+			var self = this,
+				$window = util.getWindow();
 
 			if ( this.isIos ) {
-				this._resizeContent( $( window ).height() );
-				$( el )
+				this._resizeContent( $window.height() );
+				$el
 					.on( 'focus', function () {
 						setTimeout( function () {
 							var keyboardHeight = 0;
@@ -318,7 +335,10 @@
 		}
 	} );
 
+	/** @ignore @event Overlay#Overlay-exit */
+	Overlay.EVENT_EXIT = 'Overlay-exit';
+
 	M.define( 'mobile.startup/Overlay', Overlay )
 		.deprecate( 'mobile.overlays/Overlay' );
 
-}( mw.mobileFrontend, jQuery ) );
+}( mw.mobileFrontend ) );

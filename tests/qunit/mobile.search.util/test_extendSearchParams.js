@@ -1,4 +1,4 @@
-( function ( M, $ ) {
+( function ( M ) {
 
 	var extendSearchParams = M.require( 'mobile.search.util/extendSearchParams' );
 
@@ -18,8 +18,6 @@
 	QUnit.test( 'it throws if the feature is invalid', function ( assert ) {
 		var expectedError = new Error( '"foo" isn\'t a feature that shows Wikibase descriptions.' );
 
-		QUnit.expect( 1 );
-
 		assert.throws( function () {
 			extendSearchParams( 'foo', {} );
 		}, expectedError );
@@ -33,11 +31,8 @@
 			expectedParams = {
 				qux: 'quux',
 				foo: 'bar', // from wgMFSearchAPIParams
-				prop: [ 'corge', 'baz', 'pageterms' ], // from wgMFQueryPropModules and Wikibase-specific
-				wbptterms: 'description'
+				prop: [ 'corge', 'baz', 'description' ] // from wgMFQueryPropModules and Wikibase-specific
 			};
-
-		QUnit.expect( 1 );
 
 		assert.deepEqual( params, expectedParams );
 	} );
@@ -47,9 +42,7 @@
 			qux: 'quux'
 		} );
 
-		QUnit.expect( 2 );
-
-		assert.equal( $.inArray( params.prop, 'pageterms' ), -1 );
+		assert.equal( params.prop.indexOf( 'description' ), -1 );
 		assert.equal( params.wbptterms, undefined );
 	} );
 
@@ -58,11 +51,9 @@
 			wbptterms: 'grault'
 		} );
 
-		QUnit.expect( 1 );
-
 		assert.equal(
 			params.wbptterms,
-			'grault|description',
+			'grault',
 			'The given "wbptterms" is added to the default.'
 		);
 	} );
@@ -73,11 +64,8 @@
 			} ),
 			expectedParams = {
 				foo: 'bar',
-				prop: [ 'baz', 'pageterms' ],
-				wbptterms: 'description'
+				prop: [ 'baz', 'description' ]
 			};
-
-		QUnit.expect( 1 );
 
 		assert.deepEqual(
 			params,
@@ -88,25 +76,22 @@
 
 	QUnit.test( 'it is variadic', function ( assert ) {
 		var params = extendSearchParams(
-			'search',
-			{
-				baz: 'qux'
-			},
-			{
-				quux: 'corge'
-			}
+				'search',
+				{
+					baz: 'qux'
+				},
+				{
+					quux: 'corge'
+				}
 			),
 			expectedParams = {
 				foo: 'bar',
 				baz: 'qux',
 				quux: 'corge',
-				prop: [ 'baz', 'pageterms' ],
-				wbptterms: 'description'
+				prop: [ 'baz', 'description' ]
 			};
-
-		QUnit.expect( 1 );
 
 		assert.deepEqual( params, expectedParams );
 	} );
 
-}( mw.mobileFrontend, jQuery ) );
+}( mw.mobileFrontend ) );

@@ -83,7 +83,6 @@
 			];
 		this.sandbox.spy( mw, 'msg' );
 
-		QUnit.expect( tests.length );
 		$( tests ).each( function ( i ) {
 			m._distanceMessage( this[ 0 ] );
 			assert.deepEqual( mw.msg.getCall( i ).args, [ this[ 1 ], mw.language.convertNumber( this[ 2 ] ) ] );
@@ -92,7 +91,7 @@
 		mw.msg.restore();
 	} );
 
-	QUnit.test( '#getPages', 6, function ( assert ) {
+	QUnit.test( '#getPages', function ( assert ) {
 		return m.getPages( {
 			latitude: 37.787,
 			longitude: -122.51
@@ -101,16 +100,16 @@
 			assert.strictEqual( pages[ 0 ].title, 'Wikimedia Foundation' );
 			assert.ok( !pages[ 0 ].thumbnail.isLandscape );
 			assert.strictEqual( pages[ 2 ].title, 'W San Francisco' );
-			assert.strictEqual( pages[ 2 ].thumbnail, undefined );
+			assert.strictEqual( pages[ 2 ].thumbnail, false );
 			assert.strictEqual( pages[ 2 ].dist.toPrecision( 6 ), '177.400' );
 		} );
 	} );
 
-	QUnit.test( '#getPagesAroundPage', 4, function ( assert ) {
+	QUnit.test( '#getPagesAroundPage', function ( assert ) {
 		return m.getPagesAroundPage( 'Wikimedia Foundation' ).then( function ( pages ) {
 			assert.strictEqual( pages.length, 2 );
 			assert.strictEqual( pages[ 1 ].title, 'W San Francisco' );
-			assert.strictEqual( pages[ 1 ].thumbnail, undefined );
+			assert.strictEqual( pages[ 1 ].thumbnail, false );
 			assert.strictEqual( pages[ 1 ].dist.toPrecision( 6 ), '177.400' );
 		} );
 	} );

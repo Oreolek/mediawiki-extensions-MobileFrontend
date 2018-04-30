@@ -87,6 +87,9 @@ MobileFrontend follows the version naming from MediaWiki.
 Configuration options
 ---------------------
 
+### MobileFrontend
+The following configuration options will apply to all skins operating in useformat=mobile mode.
+
 #### $wgMFEnableXAnalyticsLogging
 
 Whether or not to enable the use of the X-Analytics HTTP response header.  This
@@ -96,14 +99,6 @@ See: https://www.mediawiki.org/wiki/Analytics/Kraken/Data_Formats/X-Analytics
 
 * Type: `Boolean`
 * Default: `false`
-
-#### $wgMinervaAlwaysShowLanguageButton
-
-Whether to show the language switcher button even if no languages are available
-for the page.
-
-* Type: `Boolean`
-* Default: `true`
 
 #### $wgMFAppPackageId
 
@@ -167,13 +162,6 @@ A list of experiments active on the skin.
   ]
 ```
 
-#### $wgMFEnableMinervaBetaFeature
-
-Controls whether the "Minerva as a desktop skin" beta feature is enabled.
-
-* Type: `Boolean`
-* Default: `false`
-
 #### $wgMFEnableJSConsoleRecruitment
 
 Controls whether a message should be logged to the console to attempt to
@@ -200,13 +188,28 @@ Must implement IContentProvider.
 * Default: `DefaultContentProvider`
 
 
-#### $wgMwApiContentProviderBaseUri"
+#### $wgMFMobileMainPageCss
+
+Allow editors to edit MediaWiki:MobileMainPage.css to serve render blocking css to the main
+page.
+
+* Type: `boolean`
+* Default: false
+
+#### $wgMFMwApiContentProviderBaseUri
 
 URL to be used by the MwApiMobileFormatter class. Points to a MediaWiki
 API that can be queried to obtain content.
 
 * Type: `string`
 * Default: `https://en.wikipedia.org/w/api.php`
+
+#### $wgMFAlwaysUseContentProvider
+
+When enabled the ContentProvider will run on desktop views as well as mobile views.
+
+* Type: `boolean`
+* Default: `false`
 
 #### $wgMFMobileFormatterHeadings
 
@@ -217,6 +220,17 @@ removed in the near future (hopefully).
 
 * Type: `Array`
 * Default: `['h1', 'h2', 'h3', 'h4', 'h5', 'h6']`
+
+#### $wgMFSiteStylesRenderBlocking
+
+If set to true, styles inside MediaWiki:Mobile.css will become render blocking.
+
+This is intended for situations where the [TemplateStyles extension](https://m.mediawiki.org/wiki/Mobile_Gateway/TemplateStyles)
+cannot be used. When enabled, this may increase the time it takes for the mobile
+site to render, depending on how large MediaWiki:Mobile.css is for your wiki.
+
+* Type: `Boolean`
+* Default: `false`
 
 #### $wgMFSpecialCaseMainPage
 
@@ -230,22 +244,6 @@ risk!
 
 * Type: `Boolean`
 * Default: `false`
-
-#### $wgMinervaEnableSiteNotice
-
-Controls whether site notices should be shown.
-See <https://www.mediawiki.org/wiki/Manual:$wgSiteNotice>.
-
-* Type: `Boolean`
-* Default: `false`
-
-#### $wgMFTidyMobileViewSections
-
-Controls whether API `action=mobileview` should have every HTML section tidied
-for invalid markup.
-
-* Type: `Boolean`
-* Default: `true`
 
 #### $wgMFMobileHeader
 
@@ -285,6 +283,22 @@ viewport.
     'beta' => false,
     // These will enable lazy loading images in all modes
     'base' => false,
+  ]
+```
+
+#### $wgMFMobileFormatterNamespaceBlacklist
+
+Array of namespaces that blacklists certain namespaces from applying mobile
+transformations to page content. This will disable lazy loading images and
+references; special casing and section formatting on the given page.
+MFRemovableClasses will not apply for any blacklisted pages.
+
+* Type: `Array`
+* Default:
+```php
+  [
+    NS_TEMPLATE,
+    NS_SPECIAL
   ]
 ```
 
@@ -339,34 +353,6 @@ Define a set of params that should be passed in every gateway query.
     'ppprop' => 'displaytitle',
   ]
 ```
-
-#### $wgMinervaApplyKnownTemplateHacks
-
-When enabled and hacks.less exists, hacks.less workarounds are included in stylesheet. These should only be needed for Wikimedia based wikis or wikis using common templates such as Template:Infobox on those wikis.
-
-* Type: `Boolean`
-* Default: `false`
-
-#### $wgMinervaPrintStyles
-
-A temporary configuration variable to control roll out of styles to improve the MobileFrontend print experience.
-
-* Type: `Array`
-* Default:
-```php
-  [
-    'beta' => true,
-    'base' => false,
-  ]
-```
-
-#### $wgMinervaPageActions
-
-Controls which page actions, if any, are displayed. Allowed: `edit`, `watch`, `talk`, and
-`switch-language`.
-
-* Type: `Array`
-* Default: `['edit', 'talk', 'watch', 'switch-language']`
 
 #### $wgMFQueryPropModules
 
@@ -439,22 +425,6 @@ Controls whether tablets should be shown the mobile site. Works only if
 * Type: `Boolean`
 * Default: `true`
 
-#### $wgMFDeviceWidthMobileSmall
-
-Devices with available screen of this value and less will have some styles
-adapted for improved reading on small screens.
-
-* Type: `Integer`
-* Default: `280`
-
-#### $wgMFDeviceWidthTablet
-
-Minimum available screen width at which a device can be considered
-a tablet/desktop.
-
-* Type: `Integer`
-* Default: `768`
-
 #### $wgMobileUrlTemplate
 
 Template for mobile URLs.
@@ -520,44 +490,9 @@ include the preceding `.` (e.g. yes: `.wikipedia.org`, **no**: `wikipedia.org`)
 * Type: `String|null`
 * Default: `null`
 
-#### $wgMFCustomLogos
-
-Use $wgMinervaCustomLogos instead.
-
-#### $wgMinervaCustomLogos
-
-Make the logos configurable.
-
-Currently, `copyright`, `copyright-width`, and `copyright-height` elements are
-supported.
-
-* `copyright` is the URL of the logo displayed in the header and footer
-* `copyright-width` (optional) is the width in pixels of the copyright image
-  you want to display
-* `copyright-height` (optional) is the height in pixels of the copyright image
-  you want to display
-* If the actual `copyright` dimensions are 200x30, then you may want to set the
-  width and height to 100 and 15 respectively (in order to support retina
-  screens).
-* Note that if -width and -height are not used sysadmin should ensure the image
-used is appropriately sized (suggested dimensions < 120px width and 18px height).
-
-Example:
-```php
-[
-  'copyright' => '/images/mysite_copyright_logo.png',
-  'copyright-width' => 100,
-  'copyright-height' => 15,
-]
-```
-
-* Type: `Array`
-* Default: `[]`
-
 #### $wgMobileFrontendLogo
 
 Path to the logo used in the login/signup form.  The standard height is `72px`
-(FIXME: Merge with `$wgMFCustomLogos`)
 
 * Type: `Boolean`
 * Default: `false`
@@ -570,13 +505,12 @@ Whether beta mode is enabled.
 * Type: `Boolean`
 * Default: `false`
 
-#### $wgMFContentNamespace
+#### MFBetaFeedbackLink
 
-The content namespace(s) that *Special:Nearby* and *Special:Random* should use.
-Should be one or more of `NS_*` constants, pipe-separated.
+Link to feedback page for beta features. If false no feedback link will be shown.
 
-* Type: `Integer|String`
-* Default: `NS_MAIN`
+* Type: `String|false`
+* Default: `false`
 
 #### $wgMFDefaultSkinClass
 
@@ -584,14 +518,6 @@ The default skin for MobileFrontend.
 
 * Type: `String`
 * Default: `'SkinMinerva'`
-
-#### $wgMinervaAlwaysShowLanguageButton
-
-Whether to show the language switcher button even if no languages are available for the page.
-
-* Type: `Boolean`
-* Default: `true`
-
 
 #### $wgMFNamespacesWithoutCollapsibleSections
 
@@ -619,10 +545,28 @@ Controls whether to collapse sections by default.
 Leave at default `true` for "encyclopedia style", where the section 0 lead text
 will always be visible and subsequent sections may be collapsed by default.
 
+In tablet sections will always be expanded by default regardless of this
+setting.
+
 Set to `false` for "dictionary style", sections are not collapsed.
 
 * Type: `Boolean`
 * Default: `true`
+
+#### $wgMFExpandAllSectionsUserOption
+
+When enabled an option on Special:MobileOptions to expand all sections by default will
+be visible. This allows a user to specify a preference for toggling which will override
+the value of wgMFCollapseSectionsByDefault.
+
+* Type: `Array`
+* Default:
+```php
+  [
+    'beta' => true,
+    'base' => false,
+  ]
+```
 
 #### $wgMFPhotoUploadWiki
 
@@ -640,18 +584,6 @@ e.g. `$wgMFPhotoUploadEndpoint = 'https://commons.wikimedia.org/w/api.php';`
 * Type: `String`
 * Default: Defaults to the current wiki
 
-#### $wgMFUseWikibaseDescription (deprecated)
-
-See `$wgMFUseWikibase`
-
-#### $wgMFDisplayWikibaseDescription (deprecated)
-
-See `$wgMFDisplayWikibaseDescriptions`
-
-#### $wgMFDisplayWikibaseDescriptionsAsTaglines (deprecated)
-
-See `$wgMFDisplayWikibaseDescriptions`
-
 #### $wgMFUseWikibase
 
 If set to true, the use Wikibase is enabled and associated features is enabled.
@@ -659,6 +591,20 @@ See `$wgMFDisplayWikibaseDescriptions`
 
 * Type: `Boolean`
 * Default: `false`
+
+#### $wgMFEnableWikidataDescriptions
+
+If set to true, wikidata descriptions as defined in $wgMFDisplayWikibaseDescriptions will show up
+in the UI in the environment they have been told to target.
+
+* Type: `Array`
+* Default:
+```php
+  [
+    'beta' => true,
+    'base' => false,
+  ]
+```
 
 #### $wgMFDisplayWikibaseDescriptions
 
@@ -683,13 +629,23 @@ $wgMFDisplayWikibaseDescriptions = [
     'tagline' => false,
   ]
 ```
+#### $wgMFSpecialPageTaglines
+Set taglines for special pages
 
-#### $wgMFAllowNonJavaScriptEditing
+```php
+$wgMFSpecialPageTaglines = [
+  "SpecialPageName" => "valid-message-key",
+];
+```
 
-Adds support for non-JavaScript editing on mobile skins.
+* Type: `Array`
+* Default:
+```php
+  [
+    "MobileOptions" => "mobile-frontend-settings-tagline"
+  ]
+```
 
-* Type: `Boolean`
-* Default: `false`
 
 #### $wgMFStripResponsiveImages
 

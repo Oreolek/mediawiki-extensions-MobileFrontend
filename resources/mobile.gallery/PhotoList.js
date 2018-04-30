@@ -1,4 +1,4 @@
-( function ( M, $ ) {
+( function ( M ) {
 	var icons = M.require( 'mobile.startup/icons' ),
 		PhotoListGateway = M.require( 'mobile.gallery/PhotoListGateway' ),
 		PhotoItem = M.require( 'mobile.gallery/PhotoItem' ),
@@ -29,7 +29,7 @@
 		this.gateway = new PhotoListGateway( gatewayOptions );
 		// Set up infinite scroll
 		this.infiniteScroll = new InfiniteScroll( 1000 );
-		this.infiniteScroll.on( 'load', $.proxy( this, '_loadPhotos' ) );
+		this.infiniteScroll.on( 'load', this._loadPhotos.bind( this ) );
 		View.call( this, options );
 	}
 
@@ -70,7 +70,7 @@
 		 * @method
 		 */
 		showEmptyMessage: function () {
-			$( '<p class="content empty">' ).text( mw.msg( 'mobile-frontend-donate-image-nouploads' ) )
+			this.parseHTML( '<p class="content empty">' ).text( mw.msg( 'mobile-frontend-donate-image-nouploads' ) )
 				.insertBefore( this.$list );
 		},
 		/**
@@ -79,36 +79,52 @@
 		 * @method
 		 */
 		hideEmptyMessage: function () {
-			this.$( '.empty' ).remove();
+			this.$( '.empty' ).hide();
 		},
 		/**
-		 * Prepend a photo to the view.
+		 * Shows loading spinner
 		 * @method
-		 * @param {Object} photoData Options describing a new {PhotoItem}
-		 * FIXME: Code duplication with PhotoList::appendPhoto
 		 */
-		prependPhoto: function ( photoData ) {
-			var photoItem;
-
-			photoData.width = this.gateway.getWidth();
-			photoItem = new PhotoItem( photoData ).prependTo( this.$list );
-			this.hideEmptyMessage();
-			M.emit( 'photo-loaded', photoItem.$el );
+		showSpinner: function () {
+			this.$end.show();
 		},
 		/**
-		 * Append a photo to the view.
+		 * Hides loading spinner
 		 * @method
-		 * @param {Object} photoData Options describing a new {PhotoItem}
 		 */
-		appendPhoto: function ( photoData ) {
-			var photoItem = new PhotoItem( photoData ).appendTo( this.$list );
-			this.hideEmptyMessage();
-			/**
-			 * @event photo-loaded
-			 * @param {jQuery.Object} element belonging to view
-			 * Fired when a new {PhotoItem} has been added to the current view.
-			 */
-			M.emit( 'photo-loaded', photoItem.$el );
+		hideSpinner: function () {
+			this.$end.hide();
+		},
+		/**
+		 * Shows/hides empty state if PhotoList is empty.
+		 * @method
+		 */
+		updateEmptyUI: function () {
+			if ( this.isEmpty() ) {
+				this.showEmptyMessage();
+			} else {
+				this.hideEmptyMessage();
+			}
+		},
+		/**
+		 * Append an array of photos to the view.
+		 * @method
+		 * @param {Array} photosData Array of objects describing a new {PhotoItem}
+		 */
+		appendPhotos: function ( photosData ) {
+			var self = this;
+			photosData.forEach( function ( photo ) {
+				new PhotoItem( photo ).appendTo( self.$list );
+			} );
+		},
+		/**
+		 * Enables infinite scroll if it's disabled
+		 * @method
+		 */
+		enableScroll: function () {
+			if ( this.infiniteScroll.enabled === false ) {
+				this.infiniteScroll.enable();
+			}
 		},
 		/**
 		 * Load photos into the view using {{PhotoListApi}} when the end is near
@@ -119,26 +135,29 @@
 		_loadPhotos: function () {
 			var self = this;
 
-			this.gateway.getPhotos().done( function ( photos ) {
-				if ( photos.length ) {
-					photos.forEach( function ( photo ) {
-						self.appendPhoto( photo );
-					} );
-					// try loading more when end is near only if we got photos last time
-					self.infiniteScroll.enable();
-				} else {
-					self.$end.remove();
-					if ( self.isEmpty() ) {
-						self.emit( 'empty' );
-						self.showEmptyMessage();
-					}
+			self.showSpinner();
+
+			this.gateway.getPhotos().then( function ( response ) {
+				var photos = response.photos || [],
+					canContinue = response.canContinue;
+
+				self.appendPhotos( photos );
+				self.updateEmptyUI();
+				if ( canContinue ) {
+					self.enableScroll();
 				}
-			} ).fail( function () {
+
+				self.hideSpinner();
+
+			} ).catch( function () {
+				self.updateEmptyUI();
+				self.hideSpinner();
+
 				// try loading again if request failed
-				self.infiniteScroll.enable();
+				self.enableScroll();
 			} );
 		}
 	} );
 
 	M.define( 'mobile.gallery/PhotoList', PhotoList );
-}( mw.mobileFrontend, jQuery ) );
+}( mw.mobileFrontend ) );

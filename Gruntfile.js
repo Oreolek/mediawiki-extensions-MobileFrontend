@@ -24,7 +24,7 @@ module.exports = function ( grunt ) {
 				syntax: 'less'
 			},
 			all: [
-				'minerva.less/**/*.less',
+				'mobile.less/**/*.less',
 				'resources/**/*.less'
 			]
 		},
@@ -49,7 +49,8 @@ module.exports = function ( grunt ) {
 			all: [
 				'*.json',
 				'**/*.json',
-				'!node_modules/**'
+				'!node_modules/**',
+				'!vendor/**'
 			]
 		}
 	} );

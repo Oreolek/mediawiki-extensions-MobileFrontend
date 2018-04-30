@@ -1,7 +1,4 @@
 <?php
-/**
- * MobileContext.php
- */
 
 use MediaWiki\MediaWikiServices;
 use MobileFrontend\Devices\DeviceDetectorService;
@@ -13,36 +10,17 @@ use MobileFrontend\WMFBaseDomainExtractor;
 class MobileContext extends ContextSource {
 	const MODE_BETA = 'beta';
 	const MODE_STABLE = 'stable';
-	const DISABLE_IMAGES_COOKIE_NAME = 'disableImages';
 	const OPTIN_COOKIE_NAME = 'optin';
 	const STOP_MOBILE_REDIRECT_COOKIE_NAME = 'stopMobileRedirect';
 	const USEFORMAT_COOKIE_NAME = 'mf_useformat';
 	const USER_MODE_PREFERENCE_NAME = 'mfMode';
-	const LAZY_LOAD_IMAGES_COOKIE_NAME = 'mfLazyLoadImages';
-	const LAZY_LOAD_IMAGES_COOKIE_VALUE = 'A';
-	const LAZY_LOAD_REFERENCES_COOKIE_NAME = 'mfLazyLoadReferences';
-	const LAZY_LOAD_REFERENCES_COOKIE_VALUE = 'A';
-
+	const LOGGER_CHANNEL = 'mobile';
 	/**
 	 * Saves the testing mode user has opted in: 'beta' or 'stable'
 	 * @var string $mobileMode
 	 */
 	protected $mobileMode;
-	/**
-	 * Save whether images are disabled for the current user
-	 * @var boolean $disableImages
-	 */
-	protected $disableImages;
-	/**
-	 * Save whether images will be lazy loaded for current user
-	 * @var boolean $lazyLoadImages
-	 */
-	protected $lazyLoadImages;
-	/**
-	 * Save whether references will be lazy loaded for current user
-	 * @var boolean $lazyLoadReferences
-	 */
-	protected $lazyLoadReferences;
+
 	/**
 	 * Whether to show the first paragraph before the infobox in the lead section
 	 * @var boolean $showFirstParagraphBeforeInfobox
@@ -74,7 +52,7 @@ class MobileContext extends ContextSource {
 	 * @see MobileContext#isMobileDevice
 	 *
 	 * @var {bool|null} $isMobileDevice
-	 **/
+	 */
 	private $isMobileDevice = null;
 
 	/**
@@ -158,118 +136,8 @@ class MobileContext extends ContextSource {
 	 */
 	public function getMFConfig() {
 		/** @var Config $config */
-		$config =  MediaWikiServices::getInstance()->getService( 'MobileFrontend.Config' );
+		$config = MediaWikiServices::getInstance()->getService( 'MobileFrontend.Config' );
 		return $config;
-	}
-
-	/**
-	 * Gets the value of a config variable whose value depends on whether the
-	 * user is a member of the beta group.
-	 *
-	 * @warning If the value of the config variable doesn't behave this way, then
-	 *  `null` is returned.
-	 *
-	 * @example
-	 * ```
-	 * $wgFoo = [
-	 *   'beta' => 'bar',
-	 *   'base' => 'baz',
-	 * ];
-	 * $wgQux = 'quux';
-	 * $wgCorge = [
-	 *   'grault' => 'garply',
-	 * ];
-	 *
-	 * $context = MobileContext::singleton();
-	 * $context->getConfigVariable( 'Foo' ); // => 'baz'
-	 *
-	 * $context->setMobileMode( 'beta' );
-	 * $context->getConfigVariable( 'Foo' ); // => 'bar'
-	 *
-	 * // If the config variable isn't a dictionary, then its value will be
-	 * // returned returned regardless of whether the user is a member of the beta
-	 * // group.
-	 * $context->getConfigVariable( 'Qux' ); // => 'quux'
-	 *
-	 * // If the config variable is a dictionary but doesn't have "beta" or "base"
-	 * // entries, then `null` will be returned.
-	 * $context->getConfigVariable( 'Corge' ); // => null
-	 * ```
-	 *
-	 * @param $variableName
-	 * @return mixed|null
-	 * @throws ConfigException If the config variable doesn't exist
-	 *
-	 * @TODO Should this be renamed, e.g. `getFlag`, or extracted?
-	 */
-	public function getConfigVariable( $variableName ) {
-		$configVariable = $this->getMFConfig()->get( $variableName ) ?: [];
-
-		if ( !is_array( $configVariable ) ) {
-			return $configVariable;
-		}
-
-		if ( $this->isBetaGroupMember() && array_key_exists( 'beta', $configVariable ) ) {
-			return $configVariable['beta'];
-		} elseif ( array_key_exists( 'base', $configVariable ) ) {
-			return $configVariable['base'];
-		}
-		return null;
-	}
-
-	/**
-	 * Checks whether references should be lazy loaded for the current user
-	 * @return bool
-	 */
-	public function isLazyLoadReferencesEnabled() {
-		if ( $this->lazyLoadReferences === null ) {
-			$cookie = $this->getRequest()->getCookie( self::LAZY_LOAD_REFERENCES_COOKIE_NAME, '' );
-			$this->lazyLoadReferences = $this->getConfigVariable( 'MFLazyLoadReferences' ) ||
-				$cookie === self::LAZY_LOAD_REFERENCES_COOKIE_VALUE;
-		}
-		return $this->lazyLoadReferences;
-	}
-
-	/**
-	 * Checks whether images should be lazy loaded for the current user
-	 * @return bool
-	 */
-	public function isLazyLoadImagesEnabled() {
-		if ( $this->lazyLoadImages === null ) {
-			$cookie = $this->getRequest()->getCookie( self::LAZY_LOAD_IMAGES_COOKIE_NAME, '' );
-			$this->lazyLoadImages = $this->getConfigVariable( 'MFLazyLoadImages' ) ||
-				$cookie === self::LAZY_LOAD_IMAGES_COOKIE_VALUE;
-		}
-		return $this->lazyLoadImages;
-	}
-
-	/**
-	 * Checks whether the first paragraph from the lead section should be
-	 * shown before all infoboxes that come earlier.
-	 * @return bool
-	 */
-	public function shouldShowFirstParagraphBeforeInfobox() {
-		if ( $this->showFirstParagraphBeforeInfobox === null ) {
-			$this->showFirstParagraphBeforeInfobox = $this->getConfigVariable(
-				'MFShowFirstParagraphBeforeInfobox' );
-		}
-		return $this->showFirstParagraphBeforeInfobox;
-	}
-
-	/**
-	 * Checks whether images are disabled for the current user
-	 * @return bool
-	 */
-	public function imagesDisabled() {
-		if ( is_null( $this->disableImages ) ) {
-			$this->disableImages = (
-				( isset( $_COOKIE[ self::DISABLE_IMAGES_COOKIE_NAME ] )
-				  && $_COOKIE[ self::DISABLE_IMAGES_COOKIE_NAME ] === '1' ) ||
-				(bool) $this->getRequest()->getCookie( self::DISABLE_IMAGES_COOKIE_NAME )
-			);
-		}
-
-		return $this->disableImages;
 	}
 
 	/**
@@ -311,7 +179,7 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Save whether mobile view should always be enforced
-	 * @param bool $value
+	 * @param bool $value should mobile view be enforced?
 	 */
 	public function setForceMobileView( $value ) {
 		$this->forceMobileView = $value;
@@ -319,7 +187,7 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Whether mobile view should always be enforced
-	 * @return bool
+	 * @return bool is mobile view enforced?
 	 */
 	public function getForceMobileView() {
 		return $this->forceMobileView;
@@ -327,7 +195,7 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Whether content should be transformed to better suit mobile devices
-	 * @param bool $value
+	 * @param bool $value should content be transformed?
 	 */
 	public function setContentTransformations( $value ) {
 		$this->contentTransformations = $value;
@@ -335,7 +203,7 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Whether content should be transformed to better suit mobile devices
-	 * @return bool
+	 * @return bool is content being transformed?
 	 */
 	public function getContentTransformations() {
 		return $this->contentTransformations;
@@ -421,7 +289,7 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Wether user is Beta group member
-	 * @return boolean
+	 * @return bool
 	 */
 	public function isBetaGroupMember() {
 		return $this->getMobileMode() === self::MODE_BETA;
@@ -558,7 +426,7 @@ class MobileContext extends ContextSource {
 		if ( $noMobileCategory && $title ) {
 			$id = $title->getArticleID();
 			if ( $id ) {
-				$dbr = wfGetDB( DB_SLAVE );
+				$dbr = wfGetDB( DB_REPLICA );
 				if ( $dbr->selectField( 'categorylinks',
 					'cl_from',
 					[ 'cl_from' => $id, 'cl_to' => $noMobileCategory ],
@@ -604,7 +472,7 @@ class MobileContext extends ContextSource {
 	/**
 	 * Overrides the value of `MobileContext#getUseFormat`.
 	 *
-	 * @param string $useFormat
+	 * @param string $useFormat new value
 	 */
 	public function setUseFormat( $useFormat ) {
 		$this->useFormat = $useFormat;
@@ -612,7 +480,7 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Set Cookie to stop automatically redirect to mobile page
-	 * @param integer $expiry Expire time of cookie
+	 * @param int $expiry Expire time of cookie
 	 */
 	public function setStopMobileRedirectCookie( $expiry = null ) {
 		if ( is_null( $expiry ) ) {
@@ -631,7 +499,6 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Remove cookie and continue automatic redirect to mobile page
-	 * @return string
 	 */
 	public function unsetStopMobileRedirectCookie() {
 		if ( is_null( $this->getStopMobileRedirectCookie() ) ) {
@@ -664,19 +531,6 @@ class MobileContext extends ContextSource {
 		$useFormatFromCookie = $this->getRequest()->getCookie( self::USEFORMAT_COOKIE_NAME, '' );
 
 		return $useFormatFromCookie;
-	}
-
-	/**
-	 * Set or unset cookie to disable images on pages
-	 * @param bool $shouldDisableImages
-	 */
-	public function setDisableImagesCookie( $shouldDisableImages ) {
-		$resp = $this->getRequest()->response();
-		if ( $shouldDisableImages ) {
-			$resp->setCookie( self::DISABLE_IMAGES_COOKIE_NAME, 1, 0, [ 'prefix' => '' ] );
-		} else {
-			$resp->clearCookie( self::DISABLE_IMAGES_COOKIE_NAME, [ 'prefix' => '' ] );
-		}
 	}
 
 	/**
@@ -715,8 +569,8 @@ class MobileContext extends ContextSource {
 	 * This cookie can determine whether or not a user should see the mobile
 	 * version of pages.
 	 *
-	 * @param string $cookieFormat
-	 * @param null $expiry
+	 * @param string $cookieFormat should user see mobile version of pages?
+	 * @param null $expiry Expiration of cookie
 	 */
 	public function setUseFormatCookie( $cookieFormat = 'true', $expiry = null ) {
 		if ( is_null( $expiry ) ) {
@@ -744,7 +598,7 @@ class MobileContext extends ContextSource {
 
 		// set expiration date in the past
 		$expire = $this->getUseFormatCookieExpiry( time(), -3600 );
-		$this->setUseFormatCookie( '', $expire, true );
+		$this->setUseFormatCookie( '', $expire );
 	}
 
 	/**
@@ -794,7 +648,8 @@ class MobileContext extends ContextSource {
 	 *
 	 * Eg if a desktop domain is en.wikipedia.org, but the mobile variant is
 	 * en.m.wikipedia.org, the mobile token is 'm.'
-	 * @param $mobileUrlHostTemplate string
+	 *
+	 * @param string $mobileUrlHostTemplate URL host
 	 * @return string
 	 */
 	public function getMobileHostToken( $mobileUrlHostTemplate ) {
@@ -804,6 +659,7 @@ class MobileContext extends ContextSource {
 	/**
 	 * Get the template for mobile URLs.
 	 * @see $wgMobileUrlTemplate
+	 * @return string
 	 */
 	public function getMobileUrlTemplate() {
 		if ( !$this->mobileUrlTemplate ) {
@@ -814,12 +670,11 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Take a URL and return a copy that conforms to the mobile URL template
-	 * @param string $url
-	 * @param bool $forceHttps
+	 * @param string $url URL to convert
+	 * @param bool $forceHttps should force HTTPS?
 	 * @return string|bool
 	 */
 	public function getMobileUrl( $url, $forceHttps = false ) {
-
 		if ( $this->shouldDisplayMobileView() ) {
 			$subdomainTokenReplacement = null;
 			if ( Hooks::run( 'GetMobileUrl', [ &$subdomainTokenReplacement, $this ] ) ) {
@@ -875,8 +730,8 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Take a URL and return a copy that removes any mobile tokens
-	 * @param string $url
-	 * @return string
+	 * @param string $url representing a page on the mobile domain e.g. `https://en.m.wikipedia.org/`
+	 * @return string (absolute url)
 	 */
 	public function getDesktopUrl( $url ) {
 		$parsedUrl = wfParseUrl( $url );
@@ -888,12 +743,12 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Update host of given URL to conform to mobile URL template.
-	 * @param array $parsedUrl
-	 * 		Result of parseUrl() or wfParseUrl()
+	 * @param array &$parsedUrl Result of parseUrl() or wfParseUrl()
 	 */
 	protected function updateMobileUrlHost( &$parsedUrl ) {
 		if ( IP::isIPAddress( $parsedUrl['host'] ) ) {
-			return; // Do not update host when IP is used
+			// Do not update host when IP is used
+			return;
 		}
 		$mobileUrlHostTemplate = $this->parseMobileUrlTemplate( 'host' );
 		if ( !strlen( $mobileUrlHostTemplate ) ) {
@@ -908,7 +763,8 @@ class MobileContext extends ContextSource {
 			if ( strstr( $templateHostPart, '%h' ) ) {
 				$parsedHostPartKey = substr( $templateHostPart, 2 );
 				if ( !array_key_exists( $parsedHostPartKey, $parsedHostParts ) ) {
-					return; // invalid pattern for this host, ignore
+					// invalid pattern for this host, ignore
+					return;
 				}
 				$targetHostParts[$key] = $parsedHostParts[$parsedHostPartKey];
 			} elseif ( isset( $parsedHostParts[$key] )
@@ -925,8 +781,7 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Update the host of a given URL to strip out any mobile tokens
-	 * @param array $parsedUrl
-	 *		Result of parseUrl() or wfParseUrl()
+	 * @param array &$parsedUrl Result of parseUrl() or wfParseUrl()
 	 */
 	protected function updateDesktopUrlHost( &$parsedUrl ) {
 		$server = $this->getConfig()->get( 'Server' );
@@ -942,12 +797,11 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Update the query portion of a given URL to remove any 'useformat' params
-	 * @param array $parsedUrl
-	 * 		Result of parseUrl() or wfParseUrl()
+	 * @param array &$parsedUrl Result of parseUrl() or wfParseUrl()
 	 */
 	protected function updateDesktopUrlQuery( &$parsedUrl ) {
 		if ( isset( $parsedUrl['query'] ) && strpos( $parsedUrl['query'], 'useformat' ) !== false ) {
-			$query = wfCgiToArray( html_entity_decode( $parsedUrl['query'] ) );
+			$query = wfCgiToArray( $parsedUrl['query'] );
 			unset( $query['useformat'] );
 			$parsedUrl['query'] = wfArrayToCgi( $query );
 		}
@@ -961,8 +815,7 @@ class MobileContext extends ContextSource {
 	 * this is intended to provide. This will hopefully be implemented someday
 	 * in the not to distant future.
 	 *
-	 * @param array $parsedUrl
-	 * 		Result of parseUrl() or wfParseUrl()
+	 * @param array &$parsedUrl Result of parseUrl() or wfParseUrl()
 	 */
 	protected function updateMobileUrlPath( &$parsedUrl ) {
 		$scriptPath = $this->getConfig()->get( 'ScriptPath' );
@@ -991,7 +844,7 @@ class MobileContext extends ContextSource {
 	 * Parse mobile URL template into its host and path components.
 	 *
 	 * Optionally specify which portion of the template you want returned.
-	 * @param string $part
+	 * @param string $part which part to return?
 	 * @return mixed
 	 */
 	public function parseMobileUrlTemplate( $part = null ) {
@@ -1112,8 +965,8 @@ class MobileContext extends ContextSource {
 
 	/**
 	 * Add key/value pairs for analytics purposes to $this->analyticsLogItems
-	 * @param string $key
-	 * @param string $val
+	 * @param string $key for <key> in `X-Analytics: <key>=<value>`
+	 * @param string $val for <value> in `X-Analytics: <key>=<value>`
 	 */
 	public function addAnalyticsLogItem( $key, $val ) {
 		$key = trim( $key );
@@ -1169,6 +1022,9 @@ class MobileContext extends ContextSource {
 	 * Adds analytics log items if the user is in beta mode
 	 *
 	 * Invoked from MobileFrontendHooks::onRequestContextCreateSkin()
+	 *
+	 * Making changes to what this method logs? Make sure you update the
+	 * documentation for the X-Analytics header: https://wikitech.wikimedia.org/wiki/X-Analytics
 	 */
 	public function logMobileMode() {
 		if ( $this->isBetaGroupMember() ) {
@@ -1186,11 +1042,12 @@ class MobileContext extends ContextSource {
 	 * Should image thumbnails in pages remove the high-density additions
 	 * during this request?
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
 	public function shouldStripResponsiveImages() {
 		if ( $this->stripResponsiveImagesOverride === null ) {
-			return $this->getMFConfig()->get( 'MFStripResponsiveImages' );
+			return $this->shouldDisplayMobileView()
+				&& $this->getMFConfig()->get( 'MFStripResponsiveImages' );
 		} else {
 			return $this->stripResponsiveImagesOverride;
 		}
@@ -1199,63 +1056,32 @@ class MobileContext extends ContextSource {
 	/**
 	 * Config override for responsive image strip mode.
 	 *
-	 * @param boolean $val
+	 * @param bool $val New value
 	 */
 	public function setStripResponsiveImages( $val ) {
 		$this->stripResponsiveImagesOverride = $val;
 	}
 
 	/**
-	* Gets whether Wikibase descriptions should be shown in search results, including nearby search,
-	* and watchlists; or as taglines on article pages based on legacy configuration variables.
-	 *
-	 * @param string $feature
-	 * @return boolean
-	 */
-	private function shouldShowWikibaseDescriptionsLegacy( $feature ) {
-		$config = $this->getMFConfig();
-
-		if ( !$config->get( 'MFUseWikibaseDescription' ) ) {
-			return false;
-		}
-
-		if ( $feature === 'tagline' ) {
-			return $config->get( 'MFDisplayWikibaseDescriptionsAsTaglines' );
-		}
-
-		return $config->get( 'MFDisplayWikibaseDescription' );
-	}
-
-	/**
 	 * Gets whether Wikibase descriptions should be shown in search results, including nearby search,
 	 * and watchlists; or as taglines on article pages.
+	 * Doesn't take into account whether the wikidata descriptions
+	 * feature has been enabled.
 	 *
-	 * TODO: In early August, the legacy <code>$wgMFUseWikibaseDescription</code> and
-	 * <code>$wgMFDisplayWikibaseDescriptionsAsTaglines</code> configuration variables will be
-	 * removed and <code>MobileContext#shouldUseWikidataDescriptionsLegacy</code> can be removed.
-	 *
-	 * @param string $feature
-	 * @return boolean
+	 * @param string $feature which description to show?
+	 * @return bool
 	 * @throws DomainException If `feature` isn't one that shows Wikidata descriptions. See the
 	 *  `wgMFDisplayWikibaseDescriptions` configuration variable for detail
 	 */
 	public function shouldShowWikibaseDescriptions( $feature ) {
 		$config = $this->getMFConfig();
 		$displayWikibaseDescriptions = $config->get( 'MFDisplayWikibaseDescriptions' );
-
 		if ( !isset( $displayWikibaseDescriptions[ $feature ] ) ) {
 			throw new DomainException(
 				"\"{$feature}\" isn't a feature that shows Wikidata descriptions."
 			);
 		}
 
-		if (
-			$this->isBetaGroupMember() ||
-			( $config->get( 'MFUseWikibase' ) && $displayWikibaseDescriptions[ $feature ] )
-		) {
-			return true;
-		}
-
-		return $this->shouldShowWikibaseDescriptionsLegacy( $feature );
+		return $displayWikibaseDescriptions[ $feature ];
 	}
 }

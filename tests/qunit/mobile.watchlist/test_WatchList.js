@@ -11,12 +11,13 @@
 		setup: function () {
 			var resp = {
 				query: {
-					pages: {
-						30: {
+					pages: [
+						{
+							pageid: 30,
 							watched: ''
 						},
-						50: {}
-					}
+						{ pageid: 50 }
+					]
 				}
 			};
 
@@ -26,7 +27,7 @@
 		}
 	} );
 
-	QUnit.test( 'In watched mode', 3, function ( assert ) {
+	QUnit.test( 'In watched mode', function ( assert ) {
 		var pl = new WatchList( {
 			api: new mw.Api(),
 			pages: [ {

@@ -1,6 +1,7 @@
-( function ( M, $ ) {
+( function ( M ) {
 
 	var Overlay = M.require( 'mobile.startup/Overlay' ),
+		util = M.require( 'mobile.startup/util' ),
 		CategoryGateway = M.require( 'mobile.categories.overlays/CategoryGateway' ),
 		CategoryLookupInputWidget = M.require( 'mobile.categories.overlays/CategoryLookupInputWidget' ),
 		icons = M.require( 'mobile.startup/icons' ),
@@ -27,7 +28,7 @@
 		 * @cfg {string} defaults.waitIcon HTML of the icon that displays while a page edit
 		 * is being saved.
 		 */
-		defaults: $.extend( {}, Overlay.prototype.defaults, {
+		defaults: util.extend( {}, Overlay.prototype.defaults, {
 			headerButtonsListClassName: 'header-action',
 			waitMsg: mw.msg( 'mobile-frontend-categories-add-wait' ),
 			waitIcon: icons.spinner().toHtmlString()
@@ -35,7 +36,7 @@
 		/**
 		 * @inheritdoc
 		 */
-		events: $.extend( {}, Overlay.prototype.events, {
+		events: util.extend( {}, Overlay.prototype.events, {
 			'click .save': 'onSaveClick',
 			'click .suggestion': 'onCategoryClick'
 		} ),
@@ -50,7 +51,7 @@
 		/**
 		 * @inheritdoc
 		 */
-		templatePartials: $.extend( {}, Overlay.prototype.templatePartials, {
+		templatePartials: util.extend( {}, Overlay.prototype.templatePartials, {
 			header: mw.template.get( 'mobile.categories.overlays', 'CategoryAddOverlayHeader.hogan' ),
 			saveHeader: mw.template.get( 'mobile.editor.common', 'saveHeader.hogan' )
 		} ),
@@ -86,7 +87,7 @@
 		 * @param {jQuery.Event} ev
 		 */
 		onCategoryClick: function ( ev ) {
-			$( ev.target ).closest( '.suggestion' ).detach();
+			this.$( ev.target ).closest( '.suggestion' ).detach();
 			if ( this.$( '.suggestion' ).length > 0 ) {
 				this.$saveButton.prop( 'disabled', false );
 			} else {
@@ -106,8 +107,8 @@
 			this.showHidden( '.saving-header' );
 
 			// add wikitext to add to the page
-			$( '.suggestion' ).each( function () {
-				var data = $( this ).data( 'title' );
+			this.$( '.suggestion' ).each( function () {
+				var data = self.$( this ).data( 'title' );
 
 				if ( data ) {
 					// add the new categories in wikitext markup
@@ -122,7 +123,6 @@
 				// save the new categories
 				this.gateway.save( this.title, newCategories ).done( function () {
 					M.emit( 'category-added' );
-					window.location.hash = '#/categories';
 				} ).fail( function () {
 					self.showHidden( '.initial-header' );
 					self.$safeButton.prop( 'disabled', false );
@@ -133,6 +133,6 @@
 		}
 	} );
 
-	M.define( 'mobile.categories.overlays/CategoryAddOverlay', CategoryAddOverlay );
+	M.define( 'mobile.categories.overlays/CategoryAddOverlay', CategoryAddOverlay ); // resource-modules-disable-line
 
-}( mw.mobileFrontend, jQuery ) );
+}( mw.mobileFrontend ) );

@@ -21,9 +21,6 @@ $wgInterwikiCache = false;
 
 $wgMFEnableBeta = true;
 
-// needed for testing whether the language button is displayed and disabled
-$wgMinervaAlwaysShowLanguageButton = true;
-
 // For those who have wikibase installed.
 $wgMFUseWikibase = true;
 
@@ -33,3 +30,7 @@ $wgMFDisplayWikibaseDescriptions = [
 	'watchlist' => true,
 	'tagline' => true,
 ];
+
+// The "I am using the mobile site" step is designed to work on different sub-domains
+// This differs from the default.
+$wgMFAutodetectMobileView = false;

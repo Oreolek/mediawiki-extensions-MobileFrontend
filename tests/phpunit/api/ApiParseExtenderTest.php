@@ -8,21 +8,17 @@ class ApiParseExtenderTest extends MediaWikiTestCase {
 
 	/**
 	 * @dataProvider getData
+	 * @covers ApiParseExtender::onAPIGetAllowedParams
+	 * @covers ApiParseExtender::onAPIGetParamDescription
+	 * @covers ApiParseExtender::onAPIGetDescription
+	 * @covers ApiParseExtender::onAPIAfterExecute
 	 */
 	public function testApi( array $params, $expected ) {
-		global $wgUseTidy;
-
 		$this->setMwGlobals( 'wgMFRemovableClasses',
 			[
 				'base' => [ '.nomobile' ]
 			]
 		);
-		if ( $wgUseTidy ) {
-			// Should work both with Tidy and without it
-			$this->setMwGlobals( 'wgUseTidy', false );
-			$this->doTest( $params, $expected );
-			$wgUseTidy = true;
-		}
 		$this->doTest( $params, $expected );
 	}
 
@@ -54,15 +50,15 @@ class ApiParseExtenderTest extends MediaWikiTestCase {
 					'mobileformat' => 'html',
 					'text' => "Lede<h2>Section1</h2>Text<h2>Section2</h2>Text"
 				],
-				'<div class="mf-section-0" id="mf-section-0">Lede</div>' .
+				'<div class="mf-section-0" id="mf-section-0"><p>Lede</p></div>' .
 				'<h2 class="section-heading">' .
 				self::SECTION_INDICATOR .
 				'<span class="mw-headline" id="Section1">Section1</span></h2>' .
-				'<div class="mf-section-1" id="mf-section-1">Text</div>' .
+				'<div class="mf-section-1" id="mf-section-1"><p>Text</p></div>' .
 				'<h2 class="section-heading">' .
 				self::SECTION_INDICATOR .
 				'<span class="mw-headline" id="Section2">Section2</span></h2>' .
-				'<div class="mf-section-2" id="mf-section-2">Text</div>' ],
+				'<div class="mf-section-2" id="mf-section-2"><p>Text</p></div>' ],
 		];
 	}
 }

@@ -1,7 +1,6 @@
 <?php
-/**
- * SpecialMobileHistory.php
- */
+
+use Wikimedia\Rdbms\ResultWrapper;
 
 /**
  * Mobile formatted history of of a page
@@ -19,6 +18,11 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 
 	/** @var Title|null $title Null if no title passed */
 	protected $title;
+
+	/** @var string a message key for the error message heading that should be shown on a 404 */
+	protected $errorNotFoundTitleMsg = 'mobile-frontend-history-404-title';
+	/** @var string a message key for the error message description that should be shown on a 404 */
+	protected $errorNotFoundDescriptionMsg = 'mobile-frontend-history-404-desc';
 
 	/**
 	 * Construct function
@@ -38,7 +42,7 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 			$conds[ 'rev_page' ] = $this->title->getArticleID();
 		}
 		if ( $this->offset ) {
-				$dbr = wfGetDB( DB_SLAVE, self::DB_REVISIONS_TABLE );
+				$dbr = wfGetDB( DB_REPLICA, self::DB_REVISIONS_TABLE );
 				$conds[] = 'rev_timestamp <= ' . $dbr->addQuotes( $this->offset );
 		}
 		return $conds;
@@ -59,20 +63,19 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 	 * Adds HTML to render a header at the top of the feed
 	 * @param Title|string $title The page to link to or a string to show
 	 */
-	protected function renderHeaderBar( $title ) {
-		if ( $title instanceof Title ) {
-			$headerTitle = $this->getHeaderBarLink( $title );
-		} else {
-			// manually style it as a userlink
-			$headerTitle = Html::element(
-				'span',
-				[ 'class' => MobileUI::iconClass( 'user', 'before', 'mw-mf-user icon-16px' ) ],
-				$title
-			);
+	protected function renderHeaderBar( Title $title ) {
+		$namespaceLabel = '';
+		$headerTitle = $this->getHeaderBarLink( $title );
+
+		if ( MWNamespace::isTalk( $title->getNamespace() ) ) {
+			$namespaceLabel = Html::element( 'span',
+				[ 'class' => 'mw-mf-namespace' ],
+				$title->getNsText() . ': ' );
 		}
-		$this->getOutput()->addHtml(
+		$this->getOutput()->addHTML(
 			Html::openElement( 'div', [ 'class' => 'content-header' ] ) .
-			Html::openElement( 'h2', [] ) .
+			Html::openElement( 'h2', [ 'class' => 'mw-mf-title-wrapper' ] ) .
+				$namespaceLabel .
 				$headerTitle .
 				Html::closeElement( 'h2' ) .
 			Html::closeElement( 'div' )
@@ -80,19 +83,10 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 	}
 
 	/**
-	 * Show an error page, if page not found
-	 */
-	protected function showPageNotFound() {
-		wfHttpError( 404, $this->msg( 'mobile-frontend-history-404-title' )->text(),
-			$this->msg( 'mobile-frontend-history-404-desc' )->text()
-		);
-	}
-
-	/**
 	 * Checks, if the given title supports the use of SpecialMobileHistory.
 	 *
 	 * @param Title $title The title to check
-	 * @return boolean True, if SpecialMobileHistory can be used, false otherwise
+	 * @return bool True, if SpecialMobileHistory can be used, false otherwise
 	 */
 	public static function shouldUseSpecialHistory( Title $title ) {
 		$contentHandler = ContentHandler::getForTitle( $title );
@@ -130,13 +124,13 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 				}
 
 				$this->addModules();
-				$this->getOutput()->addHtml(
+				$this->getOutput()->addHTML(
 					Html::openElement( 'div', [ 'class' => 'history content-unstyled' ] )
 				);
 				$this->renderHeaderBar( $this->title );
 				$res = $this->doQuery();
 				$this->showHistory( $res );
-				$this->getOutput()->addHtml(
+				$this->getOutput()->addHTML(
 					Html::closeElement( 'div' )
 				);
 				return;
@@ -152,7 +146,7 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 	 * @return ResultWrapper
 	 */
 	protected function doQuery() {
-		$dbr = wfGetDB( DB_SLAVE, self::DB_REVISIONS_TABLE );
+		$dbr = wfGetDB( DB_REPLICA, self::DB_REVISIONS_TABLE );
 		$conds = $this->getQueryConditions();
 		$options = [
 			'ORDER BY' => 'rev_timestamp DESC'
@@ -160,10 +154,11 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 
 		$options['LIMIT'] = self::LIMIT + 1;
 
-		$tables = [ self::DB_REVISIONS_TABLE ];
-		$fields = [ '*' ];
+		$revQuery = Revision::getQueryInfo();
 
-		$res = $dbr->select( $tables, $fields, $conds, __METHOD__, $options );
+		$res = $dbr->select(
+			$revQuery['tables'], $revQuery['fields'], $conds, __METHOD__, $options, $revQuery['joins']
+		);
 
 		return $res;
 	}
@@ -178,23 +173,10 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 	 * @param Revision|null $prev Revision id of previous Revision to display the difference
 	 */
 	protected function showRow( Revision $rev, $prev ) {
+		$unhide = $this->getRequest()->getBool( 'unhide' );
 		$user = $this->getUser();
-		$userId = $rev->getUser( Revision::FOR_THIS_USER, $user );
-		if ( $userId === 0 ) {
-			$username = IP::prettifyIP( $rev->getUserText( Revision::RAW ) );
-			$isAnon = true;
-		} else {
-			$username = $rev->getUserText( Revision::FOR_THIS_USER, $user );
-			$isAnon = false;
-		}
-
-		// FIXME: Style differently user comment when this is the case
-		if ( $rev->userCan( Revision::DELETED_COMMENT, $user ) ) {
-			$comment = $rev->getComment( Revision::FOR_THIS_USER, $user );
-			$comment = $this->formatComment( $comment, $this->title );
-		} else {
-			$comment = $this->msg( 'rev-deleted-comment' )->plain();
-		}
+		$username = $this->getUsernameText( $rev, $user, $unhide );
+		$comment = $this->getRevisionCommentHTML( $rev, $user, $unhide );
 
 		$ts = $rev->getTimestamp();
 		$this->renderListHeaderWhereNeeded( $this->getLanguage()->userDate( $ts, $this->getUser() ) );
@@ -209,11 +191,6 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 			$diffLink = false;
 		}
 
-		// FIXME: Style differently user comment when this is the case
-		if ( !$rev->userCan( Revision::DELETED_USER, $user ) ) {
-			$username = $this->msg( 'rev-deleted-user' )->plain();
-		}
-
 		// When the page is named there is no need to print it in output
 		if ( $this->title ) {
 			$title = null;
@@ -225,13 +202,13 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 			$bytes -= $prev->getSize();
 		}
 		$isMinor = $rev->isMinor();
-		$this->renderFeedItemHtml( $ts, $diffLink, $username, $comment, $title, $isAnon, $bytes,
+		$this->renderFeedItemHtml( $ts, $diffLink, $username, $comment, $title, $user->isAnon(), $bytes,
 			$isMinor );
 	}
 
 	/**
 	 * Get a button to show more entries of history
-	 * @param integer $ts The offset to start the history list from
+	 * @param int $ts The offset to start the history list from
 	 * @return string
 	 */
 	protected function getMoreButton( $ts ) {
@@ -258,7 +235,6 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 		$rev1 = $rev2 = null;
 		$out = $this->getOutput();
 		if ( $numRows > 0 ) {
-
 			foreach ( $res as $row ) {
 				$rev1 = new Revision( $row );
 				if ( $rev2 ) {
@@ -269,17 +245,17 @@ class SpecialMobileHistory extends MobileSpecialPageFeed {
 			if ( $rev1 && $numRows < self::LIMIT + 1 ) {
 				$this->showRow( $rev1, null );
 			}
-			$out->addHtml( '</ul>' );
+			$out->addHTML( '</ul>' );
 			// Captured 1 more than we should have done so if the number of
 			// results is greater than the limit there are more to show.
 			if ( $numRows > self::LIMIT ) {
-				$out->addHtml( $this->getMoreButton( $rev1->getTimestamp() ) );
+				$out->addHTML( $this->getMoreButton( $rev1->getTimestamp() ) );
 			}
 		} else {
 			// Edge case.
 			// I suspect this is here because revisions may exist but may have been hidden.
-			$out->addHtml(
-				MobileUI::warningBox( $this->msg( 'mobile-frontend-history-no-results' ) ) );
+			$out->addHTML(
+				Html::warningBox( $this->msg( 'mobile-frontend-history-no-results' ) ) );
 		}
 	}
 

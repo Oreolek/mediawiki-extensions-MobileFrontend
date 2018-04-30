@@ -13,8 +13,8 @@
 				}
 			},
 			query: {
-				pages: {
-					2: {
+				pages: [
+					{
 						pageid: 2,
 						ns: 0,
 						title: 'Burrito',
@@ -24,7 +24,7 @@
 						lastrevid: 552,
 						length: 33534
 					},
-					3: {
+					{
 						pageid: 3,
 						ns: 0,
 						title: 'Albert Einstein',
@@ -34,7 +34,7 @@
 						lastrevid: 4,
 						length: 19
 					},
-					9: {
+					{
 						pageid: 9,
 						ns: 0,
 						title: 'Anne Dallas Dudley',
@@ -44,7 +44,7 @@
 						lastrevid: 18,
 						length: 12663
 					},
-					10: {
+					{
 						pageid: 10,
 						ns: 0,
 						title: 'San Francisco',
@@ -54,7 +54,7 @@
 						lastrevid: 546,
 						length: 373791
 					},
-					708: {
+					{
 						pageid: 708,
 						ns: 0,
 						title: 'Functional logic programming',
@@ -65,7 +65,7 @@
 						length: 1392,
 						'new': ''
 					},
-					720: {
+					{
 						pageid: 720,
 						ns: 0,
 						title: 'Functional programming',
@@ -76,20 +76,20 @@
 						length: 54839,
 						'new': ''
 					},
-					'-1': {
+					{
 						ns: 0,
 						title: 'zzzz',
 						missing: true,
 						contentmodel: 'wikitext',
 						pagelanguage: 'en'
 					}
-				}
+				]
 			}
 		};
 
 	QUnit.module( 'MobileFrontend: WatchListGateway', {} );
 
-	QUnit.test( 'load results from the first page', 3, function ( assert ) {
+	QUnit.test( 'load results from the first page', function ( assert ) {
 		var gateway = new WatchListGateway( new mw.Api() );
 
 		this.sandbox.stub( mw.Api.prototype, 'get' )
@@ -105,7 +105,7 @@
 		} );
 	} );
 
-	QUnit.test( 'load results from the second page from last item of first', 6, function ( assert ) {
+	QUnit.test( 'load results from the second page from last item of first', function ( assert ) {
 		var lastTitle = 'Albert Einstein',
 			gateway = new WatchListGateway( new mw.Api(), lastTitle ),
 			response1 = $.extend( {}, response, {
@@ -143,7 +143,7 @@
 		} );
 	} );
 
-	QUnit.test( 'it doesn\'t throw an error when no pages are returned', 1, function ( assert ) {
+	QUnit.test( 'it doesn\'t throw an error when no pages are returned', function ( assert ) {
 		var gateway = new WatchListGateway( new mw.Api() );
 
 		this.sandbox.stub( mw.Api.prototype, 'get' )
@@ -156,7 +156,7 @@
 		} );
 	} );
 
-	QUnit.test( 'it should mark pages as new if necessary', 2, function ( assert ) {
+	QUnit.test( 'it should mark pages as new if necessary', function ( assert ) {
 		var gateway = new WatchListGateway( new mw.Api() );
 
 		this.sandbox.stub( mw.Api.prototype, 'get' )
