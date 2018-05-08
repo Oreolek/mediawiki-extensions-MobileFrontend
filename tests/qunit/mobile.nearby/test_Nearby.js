@@ -1,7 +1,9 @@
 ( function ( M, $ ) {
 
 	var NearbyGateway = M.require( 'mobile.nearby/NearbyGateway' ),
-		api = new mw.Api(),
+		api = {
+			get: $.noop
+		},
 		Nearby = M.require( 'mobile.nearby/Nearby' ),
 		LocationProvider = M.require( 'mobile.nearby/LocationProvider' );
 
@@ -40,17 +42,24 @@
 		setup: function () {
 			var resp = {
 				query: {
-					pages: {
-						2: {
-							watched: ''
+					pages: [
+						{
+							pageid: 2,
+							watched: true
 						},
-						3: {},
-						4: {}
-					}
+						{
+							pageid: 3,
+							watched: false
+						},
+						{
+							pageid: 4,
+							watched: false
+						}
+					]
 				}
 			};
 			// prevent hits to api due to watch status lookup
-			this.sandbox.stub( mw.Api.prototype, 'get' ).returns( $.Deferred().resolve( resp ) );
+			this.sandbox.stub( api, 'get' ).returns( $.Deferred().resolve( resp ) );
 
 			this.getLocation = this.sandbox.stub( LocationProvider, 'getCurrentPosition' )
 				.returns( $.Deferred().resolve( {

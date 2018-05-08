@@ -1,14 +1,15 @@
 ( function ( M ) {
 	var WatchstarPageList = M.require( 'mobile.pagelist.scripts/WatchstarPageList' ),
-		InfiniteScroll = M.require( 'mobile.infiniteScroll/InfiniteScroll' ),
+		ScrollEndEventEmitter = M.require( 'mobile.scrollEndEventEmitter/ScrollEndEventEmitter' ),
 		util = M.require( 'mobile.startup/util' ),
 		WatchListGateway = M.require( 'mobile.watchlist/WatchListGateway' );
 
 	/**
-	 * An extension of the PageList which preloads pages as all being watched.
-	 * @extends PageList
+	 * An extension of the WatchstarPageList which preloads pages as all being
+	 * watched.
+	 * @extends WatchstarPageList
 	 * @class WatchList
-	 * @uses InfiniteScroll
+	 * @uses ScrollEndEventEmitter
 	 *
 	 * @constructor
 	 * @param {Object} options Configuration options
@@ -17,8 +18,9 @@
 		var lastTitle;
 
 		// Set up infinite scroll helper and listen to events
-		this.infiniteScroll = new InfiniteScroll();
-		this.infiniteScroll.on( 'load', this._loadPages.bind( this ) );
+		this.scrollEndEventEmitter = new ScrollEndEventEmitter();
+		this.scrollEndEventEmitter.on( ScrollEndEventEmitter.EVENT_SCROLL_END,
+			this._loadPages.bind( this ) );
 
 		if ( options.el ) {
 			lastTitle = this.getLastTitle( options.el );
@@ -32,18 +34,23 @@
 		isBorderBox: false,
 		/** @inheritdoc */
 		preRender: function () {
-			this.infiniteScroll.disable();
-			this.infiniteScroll.setElement( this.$el );
+			// The DOM will be modified. Prevent any false scroll end events from
+			// being emitted.
+			this.scrollEndEventEmitter.disable();
+			this.scrollEndEventEmitter.setElement( this.$el );
 		},
 		/**
 		 * Retrieve pages where all pages are watched.
 		 *
 		 * @method
-		 * @param {Array} ids a list of page ids
+		 * @param {Object.<string,string|number>} titleToPageID A page title to page
+		 *                                                      ID map. 0 indicates
+		 *                                                      ID unknown.
 		 * @return {jQuery.Deferred}
 		 */
-		getPages: function ( ids ) {
-			return this.wsGateway.loadWatchStatus( ids, true );
+		getPages: function ( titleToPageID ) {
+			this.wsGateway.populateWatchStatusCache( Object.keys( titleToPageID ), true );
+			return util.Deferred().resolve();
 		},
 		/**
 		 * Also sets a watch uploads funnel.
@@ -51,14 +58,15 @@
 		 */
 		postRender: function () {
 			WatchstarPageList.prototype.postRender.apply( this );
-			this.infiniteScroll.enable();
+			// The list has been extended. Re-enable scroll end events.
+			this.scrollEndEventEmitter.enable();
 		},
 		/**
 		 * Loads pages from the api and triggers render.
 		 * Infinite scroll is re-enabled in postRender.
 		 */
 		_loadPages: function () {
-			this.gateway.loadWatchlist().done( function ( pages ) {
+			this.gateway.loadWatchlist().then( function ( pages ) {
 				pages.forEach( function ( page ) {
 					this.appendPage( page );
 				}.bind( this ) );
@@ -68,10 +76,10 @@
 
 		/**
 		 * Appends a list item
-		 * @param {Object} page
+		 * @param {Page} page
 		 */
 		appendPage: function ( page ) {
-			// wikidata descriptions should not show in this view.c
+			// wikidata descriptions should not show in this view.
 			var templateOptions = util.extend( {}, page.options, {
 				wikidataDescription: undefined
 			} );
